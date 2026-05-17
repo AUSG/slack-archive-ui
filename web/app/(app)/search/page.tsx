@@ -8,6 +8,7 @@ import {
   HIDDEN_NAME_LIKE,
   HIDDEN_NAME_REGEX,
 } from '@/lib/data/channel-filter'
+import { cn } from '@/lib/utils'
 
 type SearchRow = {
   id: number
@@ -97,9 +98,23 @@ export default async function SearchPage({
 
   return (
     <div className="flex h-full overflow-hidden">
-      <section className="flex h-full min-w-0 flex-1 flex-col">
-        <header className="shrink-0 border-b border-zinc-200 bg-white px-6 py-3">
-          <h2 className="text-base font-semibold text-zinc-900">검색</h2>
+      <section
+        className={cn(
+          'h-full min-w-0 flex-1 flex-col',
+          showThread ? 'hidden md:flex' : 'flex',
+        )}
+      >
+        <header className="shrink-0 border-b border-zinc-200 bg-white px-4 py-3 md:px-6">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="-ml-1 inline-flex shrink-0 items-center justify-center rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 md:hidden"
+              aria-label="홈으로"
+            >
+              <BackIcon />
+            </Link>
+            <h2 className="text-base font-semibold text-zinc-900">검색</h2>
+          </div>
           <div className="mt-2">
             <SearchBar
               channels={channels ?? []}
@@ -158,13 +173,34 @@ export default async function SearchPage({
       </section>
 
       {showThread && (
-        <ThreadPanel
-          channelId={threadChannel}
-          threadTs={threadTs}
-          closeHref={baseHref}
-        />
+        <div className="h-full w-full shrink-0 md:w-[420px]">
+          <ThreadPanel
+            channelId={threadChannel}
+            threadTs={threadTs}
+            closeHref={baseHref}
+          />
+        </div>
       )}
     </div>
+  )
+}
+
+function BackIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
   )
 }
 

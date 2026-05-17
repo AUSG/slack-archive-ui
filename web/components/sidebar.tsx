@@ -23,7 +23,7 @@ export function Sidebar({
   const pathname = usePathname()
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col overflow-hidden bg-[#3F0E40] text-zinc-50">
+    <aside className="flex h-full w-full flex-col overflow-hidden bg-[#3F0E40] text-zinc-50">
       {/* Header — 고정 */}
       <div className="shrink-0 border-b border-white/10 px-5 py-4">
         <h1 className="text-base font-bold">Slack 아카이브</h1>

@@ -69,7 +69,7 @@ function ThreadShell({
   children: React.ReactNode
 }) {
   return (
-    <aside className="flex h-full w-[420px] shrink-0 flex-col overflow-hidden border-l border-zinc-200 bg-white">
+    <aside className="flex h-full w-full flex-col overflow-hidden border-l border-zinc-200 bg-white">
       {/* Header — 고정 */}
       <header className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-4 py-3">
         <h3 className="text-sm font-semibold text-zinc-900">스레드</h3>

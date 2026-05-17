@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
+import { MobileNavWrapper } from '@/components/mobile-nav-wrapper'
 import {
   HIDDEN_NAME_LIKE,
   HIDDEN_NAME_REGEX,
@@ -29,15 +30,15 @@ export default async function AppLayout({
   const avatarUrl = meta.avatar_url ?? meta.picture ?? null
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <Sidebar
-        channels={channels ?? []}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-      />
-      <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-white">
-        {children}
-      </main>
-    </div>
+    <MobileNavWrapper
+      sidebar={
+        <Sidebar
+          channels={channels ?? []}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+        />
+      }
+      main={children}
+    />
   )
 }
