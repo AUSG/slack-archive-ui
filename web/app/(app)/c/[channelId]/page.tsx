@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ChannelMessages } from '@/components/channel-messages'
 import { ThreadPanel } from '@/components/thread-panel'
 import { getUserMap } from '@/lib/data/users'
+import { buildThreadInfoMap, type ThreadInfo } from '@/lib/data/thread'
 import {
   HIDDEN_NAME_LIKE,
   HIDDEN_NAME_REGEX,
@@ -45,19 +46,16 @@ export default async function ChannelPage({
     .limit(INITIAL_PAGE_SIZE)
 
   const topLevelIds = (messages ?? []).map((m) => m.id)
-  const replyCounts: Record<number, number> = {}
+  let threadInfoMap: Record<number, ThreadInfo> = {}
 
   if (topLevelIds.length > 0) {
     const { data: replyRows } = await supabase
       .from('document')
-      .select('parent_id')
+      .select('parent_id, author, author_image_url, timestamp')
       .in('parent_id', topLevelIds)
+      .order('timestamp', { ascending: true })
 
-    for (const r of replyRows ?? []) {
-      if (r.parent_id != null) {
-        replyCounts[r.parent_id] = (replyCounts[r.parent_id] ?? 0) + 1
-      }
-    }
+    threadInfoMap = buildThreadInfoMap(replyRows ?? [])
   }
 
   return (
@@ -91,7 +89,7 @@ export default async function ChannelPage({
           key={channelId}
           channelId={channelId}
           initialMessages={messages ?? []}
-          initialReplyCounts={replyCounts}
+          initialThreadInfo={threadInfoMap}
           userMap={userMap}
         />
       </section>

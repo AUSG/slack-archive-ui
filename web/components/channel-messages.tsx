@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Message } from '@/components/message'
 import type { UserMap } from '@/lib/data/users'
+import { buildThreadInfoMap, type ThreadInfo } from '@/lib/data/thread'
 
 type Msg = {
   id: number
@@ -19,17 +20,17 @@ const PAGE_SIZE = 50
 export function ChannelMessages({
   channelId,
   initialMessages,
-  initialReplyCounts,
+  initialThreadInfo,
   userMap,
 }: {
   channelId: string
   initialMessages: Msg[]
-  initialReplyCounts: Record<number, number>
+  initialThreadInfo: Record<number, ThreadInfo>
   userMap: UserMap
 }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages)
-  const [replyCounts, setReplyCounts] =
-    useState<Record<number, number>>(initialReplyCounts)
+  const [threadInfo, setThreadInfo] =
+    useState<Record<number, ThreadInfo>>(initialThreadInfo)
   const [hasMore, setHasMore] = useState(
     initialMessages.length >= PAGE_SIZE,
   )
@@ -66,22 +67,18 @@ export function ChannelMessages({
       return
     }
 
-    // 새 배치의 reply 카운트
+    // 새 배치의 스레드 정보 (작성자 + 마지막 답글 시간 포함)
     const newIds = older.map((m) => m.id)
     const { data: replies } = await supabase
       .from('document')
-      .select('parent_id')
+      .select('parent_id, author, author_image_url, timestamp')
       .in('parent_id', newIds)
+      .order('timestamp', { ascending: true })
 
-    const counts = { ...replyCounts }
-    for (const r of replies ?? []) {
-      if (r.parent_id != null) {
-        counts[r.parent_id] = (counts[r.parent_id] ?? 0) + 1
-      }
-    }
+    const newInfo = buildThreadInfoMap(replies ?? [])
 
     setMessages([...messages, ...older])
-    setReplyCounts(counts)
+    setThreadInfo({ ...threadInfo, ...newInfo })
     setHasMore(older.length >= PAGE_SIZE)
     setLoading(false)
   }
@@ -105,7 +102,7 @@ export function ChannelMessages({
             key={m.id}
             message={m}
             channelId={channelId}
-            replyCount={replyCounts[m.id] ?? 0}
+            threadInfo={threadInfo[m.id]}
             userMap={userMap}
           />
         ))}

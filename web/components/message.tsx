@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { renderSlackMarkup } from '@/lib/slack/format'
 import type { UserMap } from '@/lib/data/users'
+import type { ThreadInfo } from '@/lib/data/thread'
 
 type Msg = {
   id: number
@@ -14,14 +15,14 @@ type Msg = {
 
 export function Message({
   message,
-  replyCount = 0,
+  threadInfo,
   channelId,
   compact = false,
   userMap,
   threadHref,
 }: {
   message: Msg
-  replyCount?: number
+  threadInfo?: ThreadInfo
   channelId?: string
   compact?: boolean
   userMap?: UserMap
@@ -56,7 +57,7 @@ export function Message({
           {renderSlackMarkup(message.content, userMap)}
         </div>
         {(() => {
-          if (replyCount <= 0) return null
+          if (!threadInfo || threadInfo.count <= 0) return null
           const href =
             threadHref ??
             (channelId && message.message_ts
@@ -66,10 +67,31 @@ export function Message({
           return (
             <Link
               href={href}
-              className="mt-1 inline-flex items-center gap-1.5 rounded border border-transparent px-1.5 py-0.5 text-xs font-medium text-[#1264a3] hover:border-zinc-200 hover:bg-white"
+              className="group/thread mt-1.5 -ml-1 inline-flex items-center gap-2 rounded-md border border-transparent px-2 py-1 transition-all hover:border-zinc-200 hover:bg-white hover:shadow-sm"
             >
-              <ReplyIcon />
-              {replyCount}개 답글
+              <div className="flex -space-x-1">
+                {threadInfo.authors.map((a, i) => (
+                  <Avatar
+                    key={`${a.name}-${i}`}
+                    className="h-5 w-5 rounded ring-2 ring-white"
+                  >
+                    {a.avatar && (
+                      <AvatarImage src={a.avatar} alt={a.name} />
+                    )}
+                    <AvatarFallback className="rounded bg-zinc-300 text-[10px] font-medium text-zinc-700">
+                      {a.name.slice(0, 1)}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+              <span className="text-xs font-semibold text-[#1264a3] group-hover/thread:underline">
+                {threadInfo.count}개 답글
+              </span>
+              {threadInfo.lastReplyAt && (
+                <span className="text-xs text-zinc-500">
+                  마지막 답글 {formatRelative(threadInfo.lastReplyAt)}
+                </span>
+              )}
             </Link>
           )
         })()}
@@ -78,22 +100,23 @@ export function Message({
   )
 }
 
-function ReplyIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-    </svg>
-  )
+function formatRelative(ts: string): string {
+  const date = new Date(ts)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const minutes = Math.floor(diffMs / 60000)
+  if (minutes < 1) return '방금 전'
+  if (minutes < 60) return `${minutes}분 전`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}시간 전`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}일 전`
+  if (days < 30) return `${Math.floor(days / 7)}주 전`
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 function formatTime(ts: string) {

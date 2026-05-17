@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getUserMap, type UserMap } from '@/lib/data/users'
+import { buildThreadInfoMap, type ThreadInfo } from '@/lib/data/thread'
 import { SearchBar } from '@/components/search-bar'
 import { Message } from '@/components/message'
 import { ThreadPanel } from '@/components/thread-panel'
@@ -47,7 +48,7 @@ export default async function SearchPage({
   )
 
   let results: SearchRow[] = []
-  let replyCounts: Record<number, number> = {}
+  let threadInfoMap: Record<number, ThreadInfo> = {}
   let errorMsg: string | null = null
 
   const trimmed = q?.trim() ?? ''
@@ -69,21 +70,17 @@ export default async function SearchPage({
         (r) => r.channel_id !== null && channelMap.has(r.channel_id),
       )
 
-      // 결과 중 top-level 메시지의 답글 카운트 보강
+      // 결과 중 top-level 메시지의 스레드 정보 보강
       const topLevelIds = results
         .filter((r) => r.parent_id === null)
         .map((r) => r.id)
       if (topLevelIds.length > 0) {
         const { data: replies } = await supabase
           .from('document')
-          .select('parent_id')
+          .select('parent_id, author, author_image_url, timestamp')
           .in('parent_id', topLevelIds)
-        for (const r of replies ?? []) {
-          if (r.parent_id != null) {
-            replyCounts[r.parent_id] =
-              (replyCounts[r.parent_id] ?? 0) + 1
-          }
-        }
+          .order('timestamp', { ascending: true })
+        threadInfoMap = buildThreadInfoMap(replies ?? [])
       }
     }
   }
@@ -163,7 +160,7 @@ export default async function SearchPage({
                       : null
                   }
                   userMap={userMap}
-                  replyCount={replyCounts[r.id] ?? 0}
+                  threadInfo={threadInfoMap[r.id]}
                   baseQs={baseQs.toString()}
                 />
               ))}
@@ -208,19 +205,20 @@ function SearchResult({
   row,
   channelName,
   userMap,
-  replyCount,
+  threadInfo,
   baseQs,
 }: {
   row: SearchRow
   channelName: string | null
   userMap: UserMap
-  replyCount: number
+  threadInfo: ThreadInfo | undefined
   baseQs: string
 }) {
   const isTopLevel = row.parent_id === null
+  const hasReplies = (threadInfo?.count ?? 0) > 0
   // 스레드 열기: top-level + 답글 있음 → 검색 컨텍스트 보존한 URL
   const threadHref =
-    isTopLevel && replyCount > 0 && row.channel_id && row.message_ts
+    isTopLevel && hasReplies && row.channel_id && row.message_ts
       ? `/search?${baseQs}&t=${encodeURIComponent(row.message_ts)}&tc=${encodeURIComponent(row.channel_id)}`
       : undefined
 
@@ -242,7 +240,7 @@ function SearchResult({
           content: row.content,
           message_ts: row.message_ts,
         }}
-        replyCount={replyCount}
+        threadInfo={threadInfo}
         threadHref={threadHref}
         userMap={userMap}
       />
