@@ -31,6 +31,11 @@ export function Message({
 }) {
   const time = message.timestamp ? formatTime(message.timestamp) : ''
   const author = message.author ?? '—'
+  // 동기화된 최신 프로필이 있으면 그쪽 avatar 우선. 없으면 작성 당시 avatar.
+  const latestProfile = message.author
+    ? userMap?.byName?.[message.author]
+    : undefined
+  const avatarUrl = latestProfile?.avatarUrl ?? message.author_image_url
 
   return (
     <div
@@ -41,9 +46,7 @@ export function Message({
       }
     >
       <Avatar className="mt-0.5 h-9 w-9 shrink-0 rounded">
-        {message.author_image_url && (
-          <AvatarImage src={message.author_image_url} alt={author} />
-        )}
+        {avatarUrl && <AvatarImage src={avatarUrl} alt={author} />}
         <AvatarFallback className="rounded bg-zinc-200 text-xs text-zinc-700">
           {author.slice(0, 1)}
         </AvatarFallback>
@@ -70,19 +73,23 @@ export function Message({
               className="group/thread mt-1.5 -ml-1 inline-flex items-center gap-2 rounded-md border border-transparent px-2 py-1 transition-all hover:border-zinc-200 hover:bg-white hover:shadow-sm"
             >
               <div className="flex -space-x-1">
-                {threadInfo.authors.map((a, i) => (
-                  <Avatar
-                    key={`${a.name}-${i}`}
-                    className="h-5 w-5 rounded ring-2 ring-white"
-                  >
-                    {a.avatar && (
-                      <AvatarImage src={a.avatar} alt={a.name} />
-                    )}
-                    <AvatarFallback className="rounded bg-zinc-300 text-[10px] font-medium text-zinc-700">
-                      {a.name.slice(0, 1)}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
+                {threadInfo.authors.map((a, i) => {
+                  const latest = userMap?.byName?.[a.name]
+                  const replyAvatar = latest?.avatarUrl ?? a.avatar
+                  return (
+                    <Avatar
+                      key={`${a.name}-${i}`}
+                      className="h-5 w-5 rounded ring-2 ring-white"
+                    >
+                      {replyAvatar && (
+                        <AvatarImage src={replyAvatar} alt={a.name} />
+                      )}
+                      <AvatarFallback className="rounded bg-zinc-300 text-[10px] font-medium text-zinc-700">
+                        {a.name.slice(0, 1)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )
+                })}
               </div>
               <span className="text-xs font-semibold text-[#1264a3] group-hover/thread:underline">
                 {threadInfo.count}개 답글

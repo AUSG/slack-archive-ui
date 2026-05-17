@@ -18,12 +18,14 @@ import type { UserMap } from '@/lib/data/users'
  * - 포매팅 중첩 미지원 (예: *bold _italic_* 은 외부만 인식)
  * - 앵글 엔티티가 포매팅 안에 있으면 시각 포매팅이 끊김
  */
+const EMPTY_USER_MAP: UserMap = { byId: {}, byName: {} }
+
 export function renderSlackMarkup(
   content: string | null | undefined,
   userMap?: UserMap,
 ): React.ReactNode {
   if (!content) return null
-  return parseCodeBlocks(content, userMap ?? {})
+  return parseCodeBlocks(content, userMap ?? EMPTY_USER_MAP)
 }
 
 function decode(s: string): string {
@@ -95,7 +97,7 @@ function renderAngleEntity(inner: string, userMap: UserMap): React.ReactNode {
   if (inner.startsWith('@')) {
     const body = inner.slice(1)
     const [userId, label] = splitOnce(body, '|')
-    const resolved = label ?? userMap[userId]
+    const resolved = label ?? userMap.byId?.[userId]?.displayName
     return <Mention userId={userId} label={resolved} />
   }
 
