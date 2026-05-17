@@ -7,7 +7,8 @@ import { useSearchParams } from 'next/navigation'
 const ERROR_MESSAGES: Record<string, string> = {
   missing_code: '인증 코드가 전달되지 않았습니다. 다시 시도해주세요.',
   exchange_failed: '세션 교환에 실패했습니다. 잠시 후 다시 시도해주세요.',
-  wrong_workspace: '허용되지 않은 워크스페이스입니다.',
+  wrong_workspace:
+    'AUSG (au-sg.slack.com) 외 다른 워크스페이스로 로그인하셨습니다. AUSG 계정으로 다시 시도해주세요.',
   access_denied: 'Slack 동의가 취소되었습니다.',
 }
 
@@ -16,10 +17,21 @@ export default function LoginPage() {
     <main className="flex h-full items-center justify-center bg-zinc-50 dark:bg-black">
       <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Slack 아카이브
+          AUSG Slack 아카이브
         </h1>
-        <p className="mb-8 text-sm text-zinc-600 dark:text-zinc-400">
-          Slack 워크스페이스 멤버만 접근할 수 있습니다.
+        <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <a
+            href="https://au-sg.slack.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-zinc-900 underline-offset-2 hover:underline dark:text-zinc-50"
+          >
+            au-sg.slack.com
+          </a>
+          {' '}워크스페이스의 멤버만 로그인할 수 있어요.
+        </p>
+        <p className="mb-8 text-xs text-zinc-500 dark:text-zinc-500">
+          아래 버튼을 클릭하면 Slack 동의 화면으로 이동하고, 승인 후 자동으로 돌아옵니다.
         </p>
 
         <Suspense fallback={null}>

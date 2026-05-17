@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Slack 아카이브",
-  description: "Slack 워크스페이스 아카이브 브라우저",
+  title: "AUSG Slack 아카이브",
+  description: "au-sg.slack.com 워크스페이스 아카이브 브라우저",
 };
 
 export default function RootLayout({

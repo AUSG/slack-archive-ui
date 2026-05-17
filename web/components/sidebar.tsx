@@ -26,8 +26,8 @@ export function Sidebar({
     <aside className="flex h-full w-full flex-col overflow-hidden bg-[#3F0E40] text-zinc-50">
       {/* Header — 고정 */}
       <div className="shrink-0 border-b border-white/10 px-5 py-4">
-        <h1 className="text-base font-bold">Slack 아카이브</h1>
-        <p className="mt-0.5 text-xs text-white/60">읽기 전용 아카이브</p>
+        <h1 className="text-base font-bold">AUSG Slack 아카이브</h1>
+        <p className="mt-0.5 text-xs text-white/60">au-sg.slack.com · 읽기 전용</p>
       </div>
 
       {/* Channel list — 가운데만 스크롤 */}
