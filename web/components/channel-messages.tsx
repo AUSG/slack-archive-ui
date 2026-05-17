@@ -96,6 +96,9 @@ export function ChannelMessages({
 
   return (
     <div className="flex flex-1 flex-col-reverse overflow-y-auto">
+      {/* DOM 첫 번째 = visual 최하단. "여기가 최신" 마커 + 여백. */}
+      <BottomMarker />
+
       <div className="flex flex-col-reverse">
         {messages.map((m) => (
           <Message
@@ -125,6 +128,18 @@ export function ChannelMessages({
         ) : (
           <p className="text-xs text-zinc-400">— 채널의 시작 —</p>
         )}
+      </div>
+    </div>
+  )
+}
+
+function BottomMarker() {
+  return (
+    <div className="shrink-0 px-6 pb-6 pt-3">
+      <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-zinc-400">
+        <div className="h-px flex-1 bg-zinc-100" />
+        <span>여기가 최신</span>
+        <div className="h-px flex-1 bg-zinc-100" />
       </div>
     </div>
   )
