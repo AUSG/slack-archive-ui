@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -12,10 +12,40 @@ const ERROR_MESSAGES: Record<string, string> = {
 }
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false)
+  return (
+    <main className="flex h-full items-center justify-center bg-zinc-50 dark:bg-black">
+      <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h1 className="mb-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Slack 아카이브
+        </h1>
+        <p className="mb-8 text-sm text-zinc-600 dark:text-zinc-400">
+          Slack 워크스페이스 멤버만 접근할 수 있습니다.
+        </p>
+
+        <Suspense fallback={null}>
+          <ErrorBanner />
+        </Suspense>
+
+        <LoginButton />
+      </div>
+    </main>
+  )
+}
+
+function ErrorBanner() {
   const searchParams = useSearchParams()
   const errorCode = searchParams.get('error')
   const errorMsg = errorCode ? (ERROR_MESSAGES[errorCode] ?? errorCode) : null
+  if (!errorMsg) return null
+  return (
+    <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+      {errorMsg}
+    </div>
+  )
+}
+
+function LoginButton() {
+  const [loading, setLoading] = useState(false)
 
   const handleLogin = async () => {
     setLoading(true)
@@ -36,38 +66,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex h-full items-center justify-center bg-zinc-50 dark:bg-black">
-      <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="mb-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Slack 아카이브
-        </h1>
-        <p className="mb-8 text-sm text-zinc-600 dark:text-zinc-400">
-          Slack 워크스페이스 멤버만 접근할 수 있습니다.
-        </p>
-
-        {errorMsg && (
-          <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
-            {errorMsg}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleLogin}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-[#4A154B] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#3d1140] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? (
-            <span>연결 중…</span>
-          ) : (
-            <>
-              <SlackLogo />
-              <span>Sign in with Slack</span>
-            </>
-          )}
-        </button>
-      </div>
-    </main>
+    <button
+      type="button"
+      onClick={handleLogin}
+      disabled={loading}
+      className="flex w-full items-center justify-center gap-2 rounded-md bg-[#4A154B] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#3d1140] disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {loading ? (
+        <span>연결 중…</span>
+      ) : (
+        <>
+          <SlackLogo />
+          <span>Sign in with Slack</span>
+        </>
+      )}
+    </button>
   )
 }
 
