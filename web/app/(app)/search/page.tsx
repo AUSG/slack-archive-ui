@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getUserMap, type UserMap } from '@/lib/data/users'
-import { buildThreadInfoMap, type ThreadInfo } from '@/lib/data/thread'
+import { toThreadInfo, type ThreadInfo } from '@/lib/data/thread'
 import { SearchBar } from '@/components/search-bar'
 import { Message } from '@/components/message'
 import { ThreadPanel } from '@/components/thread-panel'
@@ -20,6 +20,9 @@ type SearchRow = {
   message_ts: string | null
   channel_id: string | null
   parent_id: number | null
+  reply_count: number | null
+  last_reply_at: string | null
+  reply_authors: Array<{ name: string; avatar: string | null }> | null
 }
 
 const PAGE_SIZE = 50
@@ -48,7 +51,6 @@ export default async function SearchPage({
   )
 
   let results: SearchRow[] = []
-  let threadInfoMap: Record<number, ThreadInfo> = {}
   let errorMsg: string | null = null
 
   const trimmed = q?.trim() ?? ''
@@ -69,19 +71,6 @@ export default async function SearchPage({
       results = ((data ?? []) as SearchRow[]).filter(
         (r) => r.channel_id !== null && channelMap.has(r.channel_id),
       )
-
-      // 결과 중 top-level 메시지의 스레드 정보 보강
-      const topLevelIds = results
-        .filter((r) => r.parent_id === null)
-        .map((r) => r.id)
-      if (topLevelIds.length > 0) {
-        const { data: replies } = await supabase
-          .from('document')
-          .select('parent_id, author, author_image_url, timestamp')
-          .in('parent_id', topLevelIds)
-          .order('timestamp', { ascending: true })
-        threadInfoMap = buildThreadInfoMap(replies ?? [])
-      }
     }
   }
 
@@ -160,7 +149,7 @@ export default async function SearchPage({
                       : null
                   }
                   userMap={userMap}
-                  threadInfo={threadInfoMap[r.id]}
+                  threadInfo={toThreadInfo(r)}
                   baseQs={baseQs.toString()}
                 />
               ))}

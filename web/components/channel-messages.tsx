@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Message } from '@/components/message'
 import type { UserMap } from '@/lib/data/users'
-import { buildThreadInfoMap, type ThreadInfo } from '@/lib/data/thread'
+import { toThreadInfo } from '@/lib/data/thread'
 
 type Msg = {
   id: number
@@ -13,6 +13,9 @@ type Msg = {
   timestamp: string | null
   content: string | null
   message_ts: string | null
+  reply_count: number | null
+  last_reply_at: string | null
+  reply_authors: Array<{ name: string; avatar: string | null }> | null
 }
 
 const PAGE_SIZE = 50
@@ -20,17 +23,13 @@ const PAGE_SIZE = 50
 export function ChannelMessages({
   channelId,
   initialMessages,
-  initialThreadInfo,
   userMap,
 }: {
   channelId: string
   initialMessages: Msg[]
-  initialThreadInfo: Record<number, ThreadInfo>
   userMap: UserMap
 }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages)
-  const [threadInfo, setThreadInfo] =
-    useState<Record<number, ThreadInfo>>(initialThreadInfo)
   const [hasMore, setHasMore] = useState(
     initialMessages.length >= PAGE_SIZE,
   )
@@ -48,7 +47,7 @@ export function ChannelMessages({
 
     const { data: older, error: fetchErr } = await supabase
       .from('document')
-      .select('id, author, author_image_url, timestamp, content, message_ts')
+      .select('id, author, author_image_url, timestamp, content, message_ts, reply_count, last_reply_at, reply_authors')
       .eq('channel_id', channelId)
       .is('parent_id', null)
       .lt('timestamp', oldest.timestamp)
@@ -67,18 +66,7 @@ export function ChannelMessages({
       return
     }
 
-    // 새 배치의 스레드 정보 (작성자 + 마지막 답글 시간 포함)
-    const newIds = older.map((m) => m.id)
-    const { data: replies } = await supabase
-      .from('document')
-      .select('parent_id, author, author_image_url, timestamp')
-      .in('parent_id', newIds)
-      .order('timestamp', { ascending: true })
-
-    const newInfo = buildThreadInfoMap(replies ?? [])
-
     setMessages([...messages, ...older])
-    setThreadInfo({ ...threadInfo, ...newInfo })
     setHasMore(older.length >= PAGE_SIZE)
     setLoading(false)
   }
@@ -102,7 +90,7 @@ export function ChannelMessages({
             key={m.id}
             message={m}
             channelId={channelId}
-            threadInfo={threadInfo[m.id]}
+            threadInfo={toThreadInfo(m)}
             userMap={userMap}
           />
         ))}

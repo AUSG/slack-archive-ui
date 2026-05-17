@@ -3,6 +3,9 @@
  * - count: 답글 수
  * - authors: 답글한 사람 (중복 제거, 최대 3명)
  * - lastReplyAt: 가장 늦은 답글의 timestamp (ISO string)
+ *
+ * 값은 document.reply_count / last_reply_at / reply_authors (denorm) 에서 옴.
+ * 유지는 DB trigger document_reply_aggregates 가 담당.
  */
 export type ThreadInfo = {
   count: number
@@ -10,43 +13,19 @@ export type ThreadInfo = {
   lastReplyAt: string | null
 }
 
-export type ReplyRow = {
-  parent_id: number | null
-  author: string | null
-  author_image_url: string | null
-  timestamp: string | null
+type ReplyAggregateRow = {
+  reply_count: number | null
+  last_reply_at: string | null
+  reply_authors: Array<{ name: string; avatar: string | null }> | null
 }
 
-/** 답글 row 들을 부모 메시지 id 기준으로 묶어 ThreadInfo 맵 생성. */
-export function buildThreadInfoMap(
-  replies: ReplyRow[],
-): Record<number, ThreadInfo> {
-  const map: Record<number, ThreadInfo> = {}
-  for (const r of replies) {
-    if (r.parent_id == null) continue
-    const info: ThreadInfo = map[r.parent_id] ?? {
-      count: 0,
-      authors: [],
-      lastReplyAt: null,
-    }
-    info.count++
-    if (
-      r.author &&
-      info.authors.length < 3 &&
-      !info.authors.some((a) => a.name === r.author)
-    ) {
-      info.authors.push({
-        name: r.author,
-        avatar: r.author_image_url,
-      })
-    }
-    if (
-      r.timestamp &&
-      (info.lastReplyAt === null || r.timestamp > info.lastReplyAt)
-    ) {
-      info.lastReplyAt = r.timestamp
-    }
-    map[r.parent_id] = info
+/** document row 의 denorm 컬럼을 ThreadInfo 로 변환. 답글 0 이면 undefined. */
+export function toThreadInfo(row: ReplyAggregateRow): ThreadInfo | undefined {
+  const count = row.reply_count ?? 0
+  if (count <= 0) return undefined
+  return {
+    count,
+    authors: row.reply_authors ?? [],
+    lastReplyAt: row.last_reply_at,
   }
-  return map
 }

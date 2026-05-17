@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation'
 import { ChannelMessages } from '@/components/channel-messages'
 import { ThreadPanel } from '@/components/thread-panel'
 import { getUserMap } from '@/lib/data/users'
-import { buildThreadInfoMap, type ThreadInfo } from '@/lib/data/thread'
 import {
   HIDDEN_NAME_LIKE,
   HIDDEN_NAME_REGEX,
@@ -39,24 +38,11 @@ export default async function ChannelPage({
 
   const { data: messages } = await supabase
     .from('document')
-    .select('id, author, author_image_url, timestamp, content, message_ts')
+    .select('id, author, author_image_url, timestamp, content, message_ts, reply_count, last_reply_at, reply_authors')
     .eq('channel_id', channelId)
     .is('parent_id', null)
     .order('timestamp', { ascending: false })
     .limit(INITIAL_PAGE_SIZE)
-
-  const topLevelIds = (messages ?? []).map((m) => m.id)
-  let threadInfoMap: Record<number, ThreadInfo> = {}
-
-  if (topLevelIds.length > 0) {
-    const { data: replyRows } = await supabase
-      .from('document')
-      .select('parent_id, author, author_image_url, timestamp')
-      .in('parent_id', topLevelIds)
-      .order('timestamp', { ascending: true })
-
-    threadInfoMap = buildThreadInfoMap(replyRows ?? [])
-  }
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -89,7 +75,6 @@ export default async function ChannelPage({
           key={channelId}
           channelId={channelId}
           initialMessages={messages ?? []}
-          initialThreadInfo={threadInfoMap}
           userMap={userMap}
         />
       </section>
