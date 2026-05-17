@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 
 type Channel = { id: string; name: string }
 
@@ -17,14 +17,18 @@ export function SearchBar({
   const router = useRouter()
   const [q, setQ] = useState(initialQuery)
   const [ch, setCh] = useState(initialChannel)
+  const [isPending, startTransition] = useTransition()
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (isPending) return
     const params = new URLSearchParams()
     const trimmed = q.trim()
     if (trimmed) params.set('q', trimmed)
     if (ch) params.set('ch', ch)
-    router.push(`/search?${params.toString()}`)
+    startTransition(() => {
+      router.push(`/search?${params.toString()}`)
+    })
   }
 
   return (
@@ -51,9 +55,10 @@ export function SearchBar({
       </select>
       <button
         type="submit"
-        className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+        disabled={isPending}
+        className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        검색
+        {isPending ? '검색 중…' : '검색'}
       </button>
     </form>
   )

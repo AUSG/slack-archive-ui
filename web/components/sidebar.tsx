@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -43,8 +43,10 @@ export function Sidebar({
                   : 'text-white/85 hover:bg-white/10',
               )}
             >
-              <SearchIcon />
-              <span>검색</span>
+              <NavItemContent
+                icon={<SearchIcon />}
+                label="검색"
+              />
             </Link>
           </li>
         </ul>
@@ -67,14 +69,10 @@ export function Sidebar({
                       : 'text-white/85 hover:bg-white/10',
                   )}
                 >
-                  <span
-                    className={cn(
-                      isActive ? 'text-white/80' : 'text-white/55',
-                    )}
-                  >
-                    #
-                  </span>
-                  <span className="truncate">{ch.name}</span>
+                  <ChannelLinkContent
+                    name={ch.name}
+                    isActive={isActive}
+                  />
                 </Link>
               </li>
             )
@@ -105,6 +103,67 @@ export function Sidebar({
         </div>
       </div>
     </aside>
+  )
+}
+
+function ChannelLinkContent({
+  name,
+  isActive,
+}: {
+  name: string
+  isActive: boolean
+}) {
+  const { pending } = useLinkStatus()
+  return (
+    <>
+      <span
+        className={cn(
+          'shrink-0',
+          isActive ? 'text-white/80' : 'text-white/55',
+        )}
+      >
+        {pending ? <SmallSpinner /> : '#'}
+      </span>
+      <span className="truncate">{name}</span>
+    </>
+  )
+}
+
+function NavItemContent({
+  icon,
+  label,
+}: {
+  icon: React.ReactNode
+  label: string
+}) {
+  const { pending } = useLinkStatus()
+  return (
+    <>
+      {pending ? <SmallSpinner /> : icon}
+      <span>{label}</span>
+    </>
+  )
+}
+
+function SmallSpinner() {
+  return (
+    <svg
+      className="h-3.5 w-3.5 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeDasharray="40 60"
+        opacity="0.9"
+      />
+    </svg>
   )
 }
 
