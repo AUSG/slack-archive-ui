@@ -4,6 +4,10 @@ import { getUserMap, type UserMap } from '@/lib/data/users'
 import { SearchBar } from '@/components/search-bar'
 import { Message } from '@/components/message'
 import { ThreadPanel } from '@/components/thread-panel'
+import {
+  HIDDEN_NAME_LIKE,
+  HIDDEN_NAME_REGEX,
+} from '@/lib/data/channel-filter'
 
 type SearchRow = {
   id: number
@@ -27,10 +31,16 @@ export default async function SearchPage({
   const supabase = await createClient()
 
   const [{ data: channels }, userMap] = await Promise.all([
-    supabase.from('channel').select('id, name').order('name'),
+    supabase
+      .from('channel')
+      .select('id, name')
+      .not('name', 'ilike', HIDDEN_NAME_LIKE)
+      .not('name', 'imatch', HIDDEN_NAME_REGEX)
+      .order('name'),
     getUserMap(),
   ])
 
+  // 가시 채널만 담은 맵. 검색 결과 필터링에도 사용.
   const channelMap = new Map(
     (channels ?? []).map((c) => [c.id, c.name]),
   )
@@ -53,7 +63,10 @@ export default async function SearchPage({
     if (error) {
       errorMsg = error.message
     } else {
-      results = (data ?? []) as SearchRow[]
+      // 숨겨진 채널 결과 제거 (channelMap 에 없으면 가시 채널 아님)
+      results = ((data ?? []) as SearchRow[]).filter(
+        (r) => r.channel_id !== null && channelMap.has(r.channel_id),
+      )
 
       // 결과 중 top-level 메시지의 답글 카운트 보강
       const topLevelIds = results

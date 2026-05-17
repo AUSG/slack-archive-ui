@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
+import {
+  HIDDEN_NAME_LIKE,
+  HIDDEN_NAME_REGEX,
+} from '@/lib/data/channel-filter'
 
 export default async function AppLayout({
   children,
@@ -16,6 +20,8 @@ export default async function AppLayout({
   const { data: channels } = await supabase
     .from('channel')
     .select('id, name, msg_count')
+    .not('name', 'ilike', HIDDEN_NAME_LIKE)
+    .not('name', 'imatch', HIDDEN_NAME_REGEX)
     .order('name')
 
   const meta = user.user_metadata ?? {}

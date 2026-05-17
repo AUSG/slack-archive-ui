@@ -3,6 +3,10 @@ import { notFound } from 'next/navigation'
 import { ChannelMessages } from '@/components/channel-messages'
 import { ThreadPanel } from '@/components/thread-panel'
 import { getUserMap } from '@/lib/data/users'
+import {
+  HIDDEN_NAME_LIKE,
+  HIDDEN_NAME_REGEX,
+} from '@/lib/data/channel-filter'
 
 const INITIAL_PAGE_SIZE = 50
 
@@ -22,6 +26,8 @@ export default async function ChannelPage({
       .from('channel')
       .select('id, name, msg_count')
       .eq('id', channelId)
+      .not('name', 'ilike', HIDDEN_NAME_LIKE)
+      .not('name', 'imatch', HIDDEN_NAME_REGEX)
       .maybeSingle(),
     getUserMap(),
   ])

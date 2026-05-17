@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import {
+  HIDDEN_NAME_LIKE,
+  HIDDEN_NAME_REGEX,
+} from '@/lib/data/channel-filter'
 
 export default async function AppHomePage() {
   const supabase = await createClient()
@@ -7,6 +11,8 @@ export default async function AppHomePage() {
   const { data: firstChannel } = await supabase
     .from('channel')
     .select('id')
+    .not('name', 'ilike', HIDDEN_NAME_LIKE)
+    .not('name', 'imatch', HIDDEN_NAME_REGEX)
     .order('name')
     .limit(1)
     .maybeSingle()
