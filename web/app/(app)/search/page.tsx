@@ -1,15 +1,18 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getUserMap, type UserMap } from '@/lib/data/users'
-import { toThreadInfo, type ThreadInfo } from '@/lib/data/thread'
-import { SearchBar } from '@/components/search-bar'
-import { Message } from '@/components/message'
-import { ThreadPanel } from '@/components/thread-panel'
+import { getUserMap } from '@/lib/data/users'
+import { SearchFilters } from '@/components/search/SearchFilters'
+import { SearchResultGroup } from '@/components/search/SearchResultGroup'
+import { ThreadPanel } from '@/components/thread/ThreadPanel'
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable'
 import {
   HIDDEN_NAME_LIKE,
   HIDDEN_NAME_REGEX,
 } from '@/lib/data/channel-filter'
-import { cn } from '@/lib/utils'
 
 type SearchRow = {
   id: number
@@ -30,9 +33,18 @@ const PAGE_SIZE = 50
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; ch?: string; t?: string; tc?: string }>
+  searchParams: Promise<{
+    q?: string
+    ch?: string
+    author?: string
+    from?: string
+    to?: string
+    hasThread?: string
+    t?: string
+    tc?: string
+  }>
 }) {
-  const { q, ch, t: threadTs, tc: threadChannel } = await searchParams
+  const sp = await searchParams
   const supabase = await createClient()
 
   const [{ data: channels }, userMap] = await Promise.all([
@@ -45,76 +57,85 @@ export default async function SearchPage({
     getUserMap(),
   ])
 
-  // 가시 채널만 담은 맵. 검색 결과 필터링에도 사용.
-  const channelMap = new Map(
-    (channels ?? []).map((c) => [c.id, c.name]),
-  )
+  const channelMap = new Map((channels ?? []).map((c) => [c.id, c.name]))
 
+  const trimmed = sp.q?.trim() ?? ''
   let results: SearchRow[] = []
   let errorMsg: string | null = null
 
-  const trimmed = q?.trim() ?? ''
   if (trimmed) {
     const { data, error } = await supabase.rpc('search_messages', {
       q: trimmed,
-      ch: ch || null,
-      author_name: null,
-      date_from: null,
-      date_to: null,
+      ch: sp.ch || null,
+      author_name: sp.author?.trim() || null,
+      date_from: sp.from || null,
+      date_to: sp.to || null,
       page_size: PAGE_SIZE,
       page_offset: 0,
     })
     if (error) {
       errorMsg = error.message
     } else {
-      // 숨겨진 채널 결과 제거 (channelMap 에 없으면 가시 채널 아님)
       results = ((data ?? []) as SearchRow[]).filter(
         (r) => r.channel_id !== null && channelMap.has(r.channel_id),
       )
+      if (sp.hasThread === '1') {
+        results = results.filter(
+          (r) => r.parent_id === null && (r.reply_count ?? 0) > 0,
+        )
+      }
     }
   }
 
-  // 현재 검색 컨텍스트를 유지한 URL prefix
+  const groups = new Map<string, SearchRow[]>()
+  for (const r of results) {
+    if (!r.channel_id) continue
+    const arr = groups.get(r.channel_id) ?? []
+    arr.push(r)
+    groups.set(r.channel_id, arr)
+  }
+
   const baseQs = new URLSearchParams()
   if (trimmed) baseQs.set('q', trimmed)
-  if (ch) baseQs.set('ch', ch)
+  if (sp.ch) baseQs.set('ch', sp.ch)
+  if (sp.author) baseQs.set('author', sp.author)
+  if (sp.from) baseQs.set('from', sp.from)
+  if (sp.to) baseQs.set('to', sp.to)
+  if (sp.hasThread) baseQs.set('hasThread', sp.hasThread)
   const baseHref = `/search?${baseQs.toString()}`
 
-  const showThread = !!threadTs && !!threadChannel
+  const showThread = !!sp.t && !!sp.tc
 
-  return (
-    <div className="flex h-full overflow-hidden">
-      <section
-        className={cn(
-          'h-full min-w-0 flex-1 flex-col',
-          showThread ? 'hidden md:flex' : 'flex',
-        )}
-      >
-        <header className="shrink-0 border-b border-zinc-200 bg-white px-4 py-3 md:px-6">
+  const main = (
+    <section className="flex h-full min-w-0 flex-1 flex-col">
+        <header className="shrink-0 border-b border-border-soft bg-surface px-4 py-3 md:px-6">
           <div className="flex items-center gap-2">
             <Link
               href="/"
-              className="-ml-1 inline-flex shrink-0 items-center justify-center rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 md:hidden"
+              className="-ml-1 inline-flex shrink-0 items-center justify-center rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text-strong md:hidden"
               aria-label="홈으로"
             >
               <BackIcon />
             </Link>
-            <h2 className="text-base font-semibold text-zinc-900">검색</h2>
+            <h2 className="text-base font-bold text-text-strong">검색</h2>
           </div>
           <div className="mt-2">
-            <SearchBar
+            <SearchFilters
               channels={channels ?? []}
-              initialQuery={trimmed}
-              initialChannel={ch ?? ''}
+              initial={{
+                q: trimmed,
+                channelId: sp.ch ?? '',
+                author: sp.author ?? '',
+                from: sp.from ?? '',
+                to: sp.to ?? '',
+                hasThread: sp.hasThread === '1',
+              }}
             />
           </div>
           {trimmed && !errorMsg && (
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-text-muted">
               {`"${trimmed}"`} 결과 {results.length.toLocaleString()}건
-              {results.length >= PAGE_SIZE && ' (상위 50개만 표시)'}
-              {ch && channelMap.get(ch)
-                ? ` · #${channelMap.get(ch)} 채널 내`
-                : ''}
+              {results.length >= PAGE_SIZE && ' (상위 50개)'}
             </p>
           )}
           {errorMsg && (
@@ -126,30 +147,24 @@ export default async function SearchPage({
 
         <div className="flex-1 overflow-y-auto">
           {!trimmed && (
-            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+            <div className="flex h-full items-center justify-center text-sm text-text-muted">
               검색어를 입력하세요.
             </div>
           )}
-
           {trimmed && results.length === 0 && !errorMsg && (
-            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+            <div className="flex h-full items-center justify-center text-sm text-text-muted">
               결과가 없습니다.
             </div>
           )}
-
           {results.length > 0 && (
-            <div className="divide-y divide-zinc-100 py-2">
-              {results.map((r) => (
-                <SearchResult
-                  key={r.id}
-                  row={r}
-                  channelName={
-                    r.channel_id
-                      ? channelMap.get(r.channel_id) ?? null
-                      : null
-                  }
+            <div>
+              {Array.from(groups.entries()).map(([cid, rows]) => (
+                <SearchResultGroup
+                  key={cid}
+                  channelId={cid}
+                  channelName={channelMap.get(cid) ?? '?'}
+                  rows={rows}
                   userMap={userMap}
-                  threadInfo={toThreadInfo(r)}
                   baseQs={baseQs.toString()}
                 />
               ))}
@@ -157,82 +172,42 @@ export default async function SearchPage({
           )}
         </div>
       </section>
+  )
 
-      {showThread && (
-        <div className="h-full w-full shrink-0 md:w-[420px]">
-          <ThreadPanel
-            channelId={threadChannel}
-            threadTs={threadTs}
-            closeHref={baseHref}
-          />
-        </div>
-      )}
+  if (!showThread || !sp.t || !sp.tc) {
+    return <div className="flex h-full overflow-hidden">{main}</div>
+  }
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      <div className="flex h-full w-full md:hidden">
+        <ThreadPanel channelId={sp.tc} threadTs={sp.t} closeHref={baseHref} />
+      </div>
+      <div className="hidden h-full w-full md:flex">
+        <ResizablePanelGroup direction="horizontal">
+          <ResizablePanel defaultSize={65} minSize={40}>
+            {main}
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={35} minSize={25} maxSize={55}>
+            <ThreadPanel
+              channelId={sp.tc}
+              threadTs={sp.t}
+              closeHref={baseHref}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
     </div>
   )
 }
 
 function BackIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
     </svg>
-  )
-}
-
-function SearchResult({
-  row,
-  channelName,
-  userMap,
-  threadInfo,
-  baseQs,
-}: {
-  row: SearchRow
-  channelName: string | null
-  userMap: UserMap
-  threadInfo: ThreadInfo | undefined
-  baseQs: string
-}) {
-  const isTopLevel = row.parent_id === null
-  const hasReplies = (threadInfo?.count ?? 0) > 0
-  // 스레드 열기: top-level + 답글 있음 → 검색 컨텍스트 보존한 URL
-  const threadHref =
-    isTopLevel && hasReplies && row.channel_id && row.message_ts
-      ? `/search?${baseQs}&t=${encodeURIComponent(row.message_ts)}&tc=${encodeURIComponent(row.channel_id)}`
-      : undefined
-
-  return (
-    <div className="rounded-md hover:bg-zinc-50">
-      <Link
-        href={row.channel_id ? `/c/${row.channel_id}` : '#'}
-        className="block px-4 pt-2 text-xs text-zinc-500 hover:underline"
-      >
-        {channelName ? `#${channelName}` : '#?'}
-        {row.parent_id ? ' · 스레드 답글' : ''}
-      </Link>
-      <Message
-        message={{
-          id: row.id,
-          author: row.author,
-          author_image_url: row.author_image_url,
-          timestamp: row.timestamp,
-          content: row.content,
-          message_ts: row.message_ts,
-        }}
-        threadInfo={threadInfo}
-        threadHref={threadHref}
-        userMap={userMap}
-      />
-    </div>
   )
 }
