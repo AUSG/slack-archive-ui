@@ -32,7 +32,7 @@ export function within(a: string, b: string, ms: number): boolean {
 }
 
 export function formatCompactHM(iso: string): string {
-  return format(new Date(iso), 'a h:mm', { locale: ko })
+  return format(new Date(iso), 'HH:mm', { locale: ko })
 }
 
 export function formatMessageTime(iso: string): string {

@@ -73,7 +73,7 @@ export function MessageRow({
             message.timestamp ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="mt-1 w-9 shrink-0 cursor-default select-none text-right text-[10px] leading-5 text-text-muted opacity-0 group-hover:opacity-100">
+                  <span className="mt-1 w-9 shrink-0 cursor-default select-none whitespace-nowrap text-right text-[10px] leading-5 text-text-muted opacity-0 group-hover:opacity-100">
                     {compactTime}
                   </span>
                 </TooltipTrigger>
