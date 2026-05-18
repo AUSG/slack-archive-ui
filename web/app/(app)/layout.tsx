@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Sidebar } from '@/components/sidebar'
-import { MobileNavWrapper } from '@/components/mobile-nav-wrapper'
+import { AppShell } from '@/components/chrome/AppShell'
 import {
   HIDDEN_NAME_LIKE,
   HIDDEN_NAME_REGEX,
@@ -28,17 +27,16 @@ export default async function AppLayout({
   const meta = user.user_metadata ?? {}
   const displayName = meta.name ?? meta.full_name ?? user.email ?? '—'
   const avatarUrl = meta.avatar_url ?? meta.picture ?? null
+  const email = user.email ?? null
 
   return (
-    <MobileNavWrapper
-      sidebar={
-        <Sidebar
-          channels={channels ?? []}
-          displayName={displayName}
-          avatarUrl={avatarUrl}
-        />
-      }
-      main={children}
-    />
+    <AppShell
+      channels={channels ?? []}
+      displayName={displayName}
+      avatarUrl={avatarUrl}
+      email={email}
+    >
+      {children}
+    </AppShell>
   )
 }
