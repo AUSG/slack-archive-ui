@@ -60,6 +60,34 @@ function CommandEmpty(
   )
 }
 
+function CommandGroup({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Group>) {
+  return (
+    <CommandPrimitive.Group
+      className={cn(
+        "overflow-hidden p-1 text-text-strong",
+        "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-text-muted",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function CommandSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Separator>) {
+  return (
+    <CommandPrimitive.Separator
+      className={cn("-mx-1 my-1 h-px bg-border-soft", className)}
+      {...props}
+    />
+  )
+}
+
 function CommandItem({
   className,
   ...props
@@ -86,4 +114,4 @@ function SearchIcon() {
   )
 }
 
-export { Command, CommandInput, CommandList, CommandEmpty, CommandItem }
+export { Command, CommandInput, CommandList, CommandEmpty, CommandItem, CommandGroup, CommandSeparator }
