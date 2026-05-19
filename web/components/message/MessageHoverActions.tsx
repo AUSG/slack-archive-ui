@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +21,7 @@ export function MessageHoverActions({
   threadHref: string | null
 }) {
   const [copied, setCopied] = useState(false)
+  const router = useRouter()
   if (!channelId || !messageTs) return null
 
   const copyLink = async () => {
@@ -36,44 +38,37 @@ export function MessageHoverActions({
   return (
     <TooltipProvider>
       <div
-        className="absolute right-4 -top-3 hidden items-center gap-0.5 rounded-md border border-border-soft bg-surface p-0.5 shadow-md group-hover:flex"
+        className="absolute right-2 top-2 hidden items-center gap-0.5 rounded-md border border-border-soft bg-surface p-0.5 shadow-sm group-hover:flex"
         role="toolbar"
         aria-label="메시지 액션"
       >
         {threadHref && (
-          <ActionLink href={threadHref} label="스레드 보기">
+          <ActionButton
+            label="스레드 보기"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              router.push(threadHref)
+            }}
+          >
             <ThreadIcon />
-          </ActionLink>
+          </ActionButton>
         )}
-        <ActionButton onClick={copyLink} label={copied ? '복사 완료' : '메시지 링크 복사'}>
+        <ActionButton onClick={() => copyLink()} label={copied ? '복사 완료' : '메시지 링크 복사'}>
           <LinkIcon />
         </ActionButton>
-        <ActionLink href={slackMessageUrl(channelId, messageTs)} label="Slack에서 열기">
+        <ActionButton
+          label="Slack에서 열기"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            window.open(slackMessageUrl(channelId, messageTs), '_blank', 'noopener,noreferrer')
+          }}
+        >
           <ExternalIcon />
-        </ActionLink>
+        </ActionButton>
       </div>
     </TooltipProvider>
-  )
-}
-
-function ActionLink({
-  href,
-  label,
-  children,
-}: {
-  href: string
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button asChild variant="ghost" size="icon-xs" aria-label={label}>
-          <a href={href}>{children}</a>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
   )
 }
 
@@ -82,7 +77,7 @@ function ActionButton({
   label,
   children,
 }: {
-  onClick: () => void
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
   label: string
   children: React.ReactNode
 }) {

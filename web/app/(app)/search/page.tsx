@@ -26,6 +26,7 @@ type SearchRow = {
   reply_count: number | null
   last_reply_at: string | null
   reply_authors: Array<{ name: string; avatar: string | null }> | null
+  thread_ts?: string | null
 }
 
 const PAGE_SIZE = 50
@@ -84,6 +85,32 @@ export default async function SearchPage({
           (r) => r.parent_id === null && (r.reply_count ?? 0) > 0,
         )
       }
+      const parentIds = Array.from(
+        new Set(
+          results
+            .map((r) => r.parent_id)
+            .filter((id): id is number => id !== null),
+        ),
+      )
+      const parentTsById = new Map<number, string>()
+      if (parentIds.length > 0) {
+        const { data: parents } = await supabase
+          .from('document')
+          .select('id, message_ts')
+          .in('id', parentIds)
+        for (const p of parents ?? []) {
+          if (p.id != null && p.message_ts != null) {
+            parentTsById.set(p.id as number, p.message_ts as string)
+          }
+        }
+      }
+      results = results.map((r) => ({
+        ...r,
+        thread_ts:
+          r.parent_id !== null
+            ? parentTsById.get(r.parent_id) ?? r.message_ts
+            : r.message_ts,
+      })) as SearchRow[]
     }
   }
 
@@ -108,7 +135,7 @@ export default async function SearchPage({
 
   const main = (
     <section className="flex h-full min-w-0 flex-1 flex-col">
-        <header className="shrink-0 border-b border-border-soft bg-surface px-4 py-3 md:px-6">
+        <header className="shrink-0 border-b border-border-soft bg-surface px-4 py-4 md:px-6">
           <div className="flex items-center gap-2">
             <Link
               href="/"
@@ -117,9 +144,15 @@ export default async function SearchPage({
             >
               <BackIcon />
             </Link>
-            <h2 className="text-base font-bold text-text-strong">검색</h2>
+            <h2 className="text-lg text-text-muted">
+              {trimmed ? (
+                <>검색: <span className="font-bold text-text-strong">{trimmed}</span></>
+              ) : (
+                <span className="font-bold text-text-strong">검색</span>
+              )}
+            </h2>
           </div>
-          <div className="mt-2">
+          <div className="mt-3">
             <SearchFilters
               channels={channels ?? []}
               initial={{
@@ -133,13 +166,13 @@ export default async function SearchPage({
             />
           </div>
           {trimmed && !errorMsg && (
-            <p className="mt-2 text-xs text-text-muted">
-              {`"${trimmed}"`} 결과 {results.length.toLocaleString()}건
+            <p className="mt-3 text-xs text-text-muted">
+              결과 {results.length.toLocaleString()}건
               {results.length >= PAGE_SIZE && ' (상위 50개)'}
             </p>
           )}
           {errorMsg && (
-            <p className="mt-2 text-xs text-red-600">
+            <p className="mt-3 text-xs text-destructive">
               검색 오류: {errorMsg}
             </p>
           )}

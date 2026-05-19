@@ -99,16 +99,18 @@ export function SearchFilters({
 
   return (
     <form onSubmit={submit} className="space-y-2">
-      <div className="flex gap-2">
+      <div className="flex items-stretch gap-2">
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="메시지 검색 (한국어 형태소 분석)"
-          className="min-w-[280px] flex-1 rounded-md border border-border-soft bg-surface px-3 py-1.5 text-sm text-text-strong placeholder:text-text-muted focus:border-text-link focus:outline-none"
+          placeholder="채널 또는 메시지를 검색…"
+          className="min-w-[280px] flex-1 rounded-md border border-border-soft bg-surface px-4 py-2.5 text-[15px] text-text-strong placeholder:text-text-muted focus:border-text-link focus:outline-none"
           autoFocus
         />
-        <Button type="submit" size="sm">검색</Button>
+        <Button type="submit" className="h-auto px-5 text-[15px]">
+          검색
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

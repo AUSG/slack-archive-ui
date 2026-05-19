@@ -13,6 +13,7 @@ import {
   HIDDEN_NAME_LIKE,
   HIDDEN_NAME_REGEX,
 } from '@/lib/data/channel-filter'
+import { MobileSearchTrigger } from '@/components/workspace/MobileSearchTrigger'
 import { slackChannelUrl } from '@/lib/slack/deep-link'
 import { compactCount } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,7 @@ export default async function ChannelPage({
             총 {compactCount(channel.msg_count ?? 0) || '0'}개 메시지
           </p>
         </div>
+        <MobileSearchTrigger />
         <a
           href={slackChannelUrl(channel.id)}
           className="hidden items-center gap-1 rounded-md border border-border-soft bg-surface px-2.5 py-1 text-xs text-text-muted hover:bg-surface-hover hover:text-text-strong md:inline-flex"

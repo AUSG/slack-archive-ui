@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { UserMenu } from './UserMenu'
-import { QuickSwitcherTrigger } from './QuickSwitcherTrigger'
 
 export function WorkspaceRail({
   displayName,
@@ -33,7 +32,6 @@ export function WorkspaceRail({
       </Link>
 
       <div className="flex flex-col items-center gap-1">
-        <QuickSwitcherTrigger />
         <UserMenu displayName={displayName} avatarUrl={avatarUrl} email={email} />
       </div>
     </aside>
