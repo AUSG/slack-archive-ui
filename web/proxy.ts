@@ -3,6 +3,19 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const PUBLIC_PATHS = ['/login', '/auth']
 
+function shouldLogAccess(request: NextRequest): boolean {
+  const { pathname } = request.nextUrl
+  const isTarget = pathname.startsWith('/c/') || pathname === '/search'
+  if (!isTarget) return false
+
+  if (request.headers.get('next-router-prefetch') === '1') return false
+  const purpose =
+    request.headers.get('purpose') ?? request.headers.get('sec-purpose') ?? ''
+  if (purpose.includes('prefetch')) return false
+
+  return true
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
@@ -44,6 +57,19 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  if (user && shouldLogAccess(request)) {
+    const query = request.nextUrl.search.replace(/^\?/, '')
+    await supabase
+      .from('access_logs')
+      .insert({
+        user_id: user.id,
+        email: user.email ?? null,
+        path: pathname,
+        query: query || null,
+      })
+      .then(undefined, () => {})
   }
 
   return response
