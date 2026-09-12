@@ -18,6 +18,16 @@ export type Msg = {
   reply_count: number | null
   last_reply_at: string | null // ISO
   reply_authors: Array<{ name: string; avatar: string | null }> | null
+  files: MsgFile[]
+}
+
+/** 첨부. `url` 은 같은 오리진의 중계 라우트. status 가 available 일 때만 바이너리가 있다. */
+export type MsgFile = {
+  id: string
+  name: string | null
+  mimetype: string | null
+  status: 'available' | 'deleted' | 'too_large' | 'broken' | 'not_image' | 'pending'
+  url: string
 }
 
 export type Channel = { id: string; name: string; msg_count: number | null; is_private?: boolean }
