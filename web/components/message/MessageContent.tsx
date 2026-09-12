@@ -6,12 +6,15 @@ import { MessageCodeBlock } from './MessageCodeBlock'
 export function MessageContent({
   content,
   userMap,
+  hasFiles = false,
 }: {
   content: string | null
   userMap?: UserMap
+  hasFiles?: boolean
 }) {
   if (!content || !content.trim()) {
-    return <AttachmentPlaceholder />
+    // 첨부가 실제로 붙어 있으면 MessageFiles 가 그리므로 "첨부 (본문 없음)" 추정 칩은 필요 없다
+    return hasFiles ? null : <AttachmentPlaceholder />
   }
   return (
     <>

@@ -32,5 +32,12 @@ export function toMsg(m: ApiMessage, userMap: UserMap): Msg {
       const p = userMap.byId[uid]
       return { name: p?.displayName ?? uid, avatar: p?.avatarUrl ?? null }
     }),
+    files: m.files.map((f) => ({
+      id: f.id,
+      name: f.name ?? f.title,
+      mimetype: f.mimetype,
+      status: f.status,
+      url: `/api/archive/files/${f.id}`,
+    })),
   }
 }

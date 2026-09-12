@@ -50,6 +50,19 @@ export async function apiGet<T>(path: string, params?: Record<string, string | n
   return (await res.json()) as T
 }
 
+/** 바이너리 중계용. 성공 Response 를 그대로 돌려주고 실패는 ApiError. 호출자가 body 를 스트리밍한다. */
+export async function apiFetchRaw(path: string): Promise<Response> {
+  if (!BASE) throw new ApiError(503, 'ARCHIVE_API_URL 이 설정되지 않았습니다', path)
+  const token = await accessToken()
+  if (!token) throw new ApiError(401, 'no session', path)
+  const res = await fetch(`${BASE}/api/v1${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null)
+    throw new ApiError(res.status, detail, path)
+  }
+  return res
+}
+
 /** 404 를 null 로. "없거나 볼 수 없음" 은 백엔드가 구분하지 않는다 (존재 여부가 곧 정보). */
 export async function apiGetOrNull<T>(
   path: string,

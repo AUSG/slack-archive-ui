@@ -14,6 +14,7 @@ import { ThreadBadge } from './ThreadBadge'
 import { MessageHoverActions } from './MessageHoverActions'
 import { MessageHighlight } from './MessageHighlight'
 import { MessageContent } from './MessageContent'
+import { MessageFiles } from './MessageFiles'
 import {
   formatCompactHM,
   formatFullTime,
@@ -98,8 +99,9 @@ export function MessageRow({
               </div>
             )}
             <div className="whitespace-pre-wrap break-words text-[15px] leading-[1.46] text-text-strong">
-              <MessageContent content={message.content} userMap={userMap} />
+              <MessageContent content={message.content} userMap={userMap} hasFiles={message.files.length > 0} />
             </div>
+            <MessageFiles files={message.files} />
             {threadInfo && resolvedThreadHref && (
               <ThreadBadge threadInfo={threadInfo} href={resolvedThreadHref} userMap={userMap} />
             )}
