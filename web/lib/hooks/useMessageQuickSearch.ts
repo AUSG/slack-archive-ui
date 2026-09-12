@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 export type QuickSearchMessage = {
-  id: number
+  id: string
   channel_id: string | null
   channel_name: string | null
   author: string | null

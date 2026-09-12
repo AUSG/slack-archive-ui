@@ -1,25 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { MessageRow } from './MessageRow'
 import { DayDivider, StickyDayChip } from './DayDivider'
 import { Button } from '@/components/ui/button'
 import type { UserMap } from '@/lib/data/users'
+import type { Msg } from '@/lib/data/types'
 import { toThreadInfo } from '@/lib/data/thread'
 import { dayKey, within } from '@/lib/utils/format'
-
-type Msg = {
-  id: number
-  author: string | null
-  author_image_url: string | null
-  timestamp: string | null
-  content: string | null
-  message_ts: string | null
-  reply_count: number | null
-  last_reply_at: string | null
-  reply_authors: Array<{ name: string; avatar: string | null }> | null
-}
 
 type DayGroup = {
   day: string
@@ -27,20 +15,23 @@ type DayGroup = {
   items: Array<{ msg: Msg; compact: boolean }>
 }
 
-const PAGE_SIZE = 50
 const COMPACT_WINDOW_MS = 5 * 60 * 1000
 
 export function MessageList({
   channelId,
   initialMessages,
+  initialNextBefore,
   userMap,
 }: {
   channelId: string
   initialMessages: Msg[]
+  initialNextBefore: string | null
   userMap: UserMap
 }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages)
-  const [hasMore, setHasMore] = useState(initialMessages.length >= PAGE_SIZE)
+  // keyset 커서. 백엔드가 "다음 페이지의 before" 를 준다. null 이면 채널의 시작
+  const [nextBefore, setNextBefore] = useState<string | null>(initialNextBefore)
+  const hasMore = nextBefore !== null
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,7 +57,7 @@ export function MessageList({
       const compact =
         !!prev &&
         !!prev.timestamp &&
-        prev.author === m.author &&
+        prev.author_id === m.author_id &&
         within(prev.timestamp, m.timestamp, COMPACT_WINDOW_MS)
       current.items.push({ msg: m, compact })
       prev = m
@@ -75,36 +66,22 @@ export function MessageList({
   }, [chrono])
 
   const loadMore = async () => {
-    if (loading || !hasMore) return
-    const oldest = messages[messages.length - 1]
-    if (!oldest?.timestamp) return
+    if (loading || nextBefore === null) return
     setLoading(true)
     setError(null)
-    const supabase = createClient()
-    const { data: older, error: fetchErr } = await supabase
-      .from('document')
-      .select(
-        'id, author, author_image_url, timestamp, content, message_ts, reply_count, last_reply_at, reply_authors',
-      )
-      .eq('channel_id', channelId)
-      .is('parent_id', null)
-      .lt('timestamp', oldest.timestamp)
-      .order('timestamp', { ascending: false })
-      .limit(PAGE_SIZE)
-
-    if (fetchErr) {
+    // 브라우저는 백엔드를 직접 부르지 않는다. 같은 오리진의 라우트 핸들러가 세션 토큰을 붙여 중계한다
+    const qs = new URLSearchParams({ channel: channelId, before: nextBefore })
+    try {
+      const res = await fetch(`/api/archive/messages?${qs}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const body = (await res.json()) as { messages: Msg[]; next_before: string | null }
+      setMessages([...messages, ...body.messages])
+      setNextBefore(body.next_before)
+    } catch {
       setError('메시지를 불러오지 못했습니다.')
+    } finally {
       setLoading(false)
-      return
     }
-    if (!older || older.length === 0) {
-      setHasMore(false)
-      setLoading(false)
-      return
-    }
-    setMessages([...messages, ...older])
-    setHasMore(older.length >= PAGE_SIZE)
-    setLoading(false)
   }
 
   if (messages.length === 0) {

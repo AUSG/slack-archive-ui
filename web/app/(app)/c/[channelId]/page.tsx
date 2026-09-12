@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { MessageList } from '@/components/message/MessageList'
 import { ThreadPanel } from '@/components/thread/ThreadPanel'
@@ -9,10 +8,8 @@ import {
   ResizableHandle,
 } from '@/components/ui/resizable'
 import { getUserMap } from '@/lib/data/users'
-import {
-  HIDDEN_NAME_LIKE,
-  HIDDEN_NAME_REGEX,
-} from '@/lib/data/channel-filter'
+import { getChannel, getMessages } from '@/lib/api/archive'
+import { toMsg } from '@/lib/data/adapt'
 import { MobileSearchTrigger } from '@/components/workspace/MobileSearchTrigger'
 import { slackChannelUrl } from '@/lib/slack/deep-link'
 import { compactCount } from '@/lib/utils/format'
@@ -29,30 +26,16 @@ export default async function ChannelPage({
 }) {
   const { channelId } = await params
   const { t: threadTs } = await searchParams
-  const supabase = await createClient()
 
-  const [{ data: channel }, userMap] = await Promise.all([
-    supabase
-      .from('channel')
-      .select('id, name, msg_count')
-      .eq('id', channelId)
-      .not('name', 'ilike', HIDDEN_NAME_LIKE)
-      .not('name', 'imatch', HIDDEN_NAME_REGEX)
-      .maybeSingle(),
+  // 채널이 없거나 볼 수 없으면 백엔드가 404 -> null. 둘을 구분하지 않는다 (존재 여부가 곧 정보).
+  const [channel, page, userMap] = await Promise.all([
+    getChannel(channelId),
+    getMessages(channelId, { limit: INITIAL_PAGE_SIZE }),
     getUserMap(),
   ])
+  if (!channel || !page) notFound()
 
-  if (!channel) notFound()
-
-  const { data: messages } = await supabase
-    .from('document')
-    .select(
-      'id, author, author_image_url, timestamp, content, message_ts, reply_count, last_reply_at, reply_authors',
-    )
-    .eq('channel_id', channelId)
-    .is('parent_id', null)
-    .order('timestamp', { ascending: false })
-    .limit(INITIAL_PAGE_SIZE)
+  const messages = page.messages.map((m) => toMsg(m, userMap))
 
   const main = (
     <section className="flex h-full min-w-0 flex-1 flex-col">
@@ -70,7 +53,7 @@ export default async function ChannelPage({
             {channel.name}
           </h2>
           <p className="mt-0.5 text-xs text-text-muted">
-            총 {compactCount(channel.msg_count ?? 0) || '0'}개 메시지
+            총 {compactCount(channel.message_count) || '0'}개 메시지
           </p>
         </div>
         <MobileSearchTrigger />
@@ -87,7 +70,8 @@ export default async function ChannelPage({
       <MessageList
         key={channelId}
         channelId={channelId}
-        initialMessages={messages ?? []}
+        initialMessages={messages}
+        initialNextBefore={page.next_before}
         userMap={userMap}
       />
     </section>

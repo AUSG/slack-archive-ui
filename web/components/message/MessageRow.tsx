@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/tooltip'
 import type { UserMap } from '@/lib/data/users'
 import type { ThreadInfo } from '@/lib/data/thread'
+import type { Msg } from '@/lib/data/types'
 import { ThreadBadge } from './ThreadBadge'
 import { MessageHoverActions } from './MessageHoverActions'
 import { MessageHighlight } from './MessageHighlight'
@@ -19,15 +20,6 @@ import {
   formatMessageTime,
 } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
-
-type Msg = {
-  id: number
-  author: string | null
-  author_image_url: string | null
-  timestamp: string | null
-  content: string | null
-  message_ts: string | null
-}
 
 export function MessageRow({
   message,
@@ -49,11 +41,9 @@ export function MessageRow({
   const time = message.timestamp ? formatMessageTime(message.timestamp) : ''
   const compactTime = message.timestamp ? formatCompactHM(message.timestamp) : ''
   const fullTime = message.timestamp ? formatFullTime(message.timestamp) : ''
+  // 이름·아바타는 서버의 adapt 단계에서 GET /users 로 채워져 온다. 여기서 이름으로 다시 찾지 않는다
   const author = message.author ?? '—'
-  const latestProfile = message.author
-    ? userMap?.byName?.[message.author]
-    : undefined
-  const avatarUrl = latestProfile?.avatarUrl ?? message.author_image_url
+  const avatarUrl = message.author_image_url
   const resolvedThreadHref =
     threadHref ?? (channelId && message.message_ts && threadInfo
       ? `/c/${channelId}?t=${message.message_ts}`
