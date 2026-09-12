@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { getChannel, getThread } from '@/lib/api/archive'
+import { toMsg } from '@/lib/data/adapt'
 import { getUserMap } from '@/lib/data/users'
 import { MessageRow } from '@/components/message/MessageRow'
 import { within } from '@/lib/utils/format'
@@ -15,27 +16,17 @@ export async function ThreadPanel({
   threadTs: string
   closeHref?: string
 }) {
-  const supabase = await createClient()
-  const userMap = await getUserMap()
-
-  const [{ data: channel }, { data: root }] = await Promise.all([
-    supabase
-      .from('channel')
-      .select('name')
-      .eq('id', channelId)
-      .maybeSingle(),
-    supabase
-      .from('document')
-      .select('id, author, author_image_url, timestamp, content, message_ts')
-      .eq('channel_id', channelId)
-      .eq('message_ts', threadTs)
-      .is('parent_id', null)
-      .maybeSingle(),
+  // 채널 조회에도 권한이 걸린다. 예전엔 여기만 이름 필터가 빠져 URL 로 숨긴 채널 스레드가 열렸다
+  const [channel, thread, userMap] = await Promise.all([
+    getChannel(channelId),
+    getThread(channelId, threadTs),
+    getUserMap(),
   ])
 
   const resolvedClose = closeHref ?? `/c/${channelId}`
+  const root = thread?.root ? toMsg(thread.root, userMap) : null
 
-  if (!root) {
+  if (!channel || !thread || !root) {
     return (
       <Shell
         closeHref={resolvedClose}
@@ -49,13 +40,7 @@ export async function ThreadPanel({
     )
   }
 
-  const { data: replies } = await supabase
-    .from('document')
-    .select('id, author, author_image_url, timestamp, content, message_ts')
-    .eq('parent_id', root.id)
-    .order('timestamp', { ascending: true })
-
-  const list = replies ?? []
+  const list = thread.replies.map((r) => toMsg(r, userMap))
 
   return (
     <Shell
@@ -81,7 +66,7 @@ export async function ThreadPanel({
               !!prev &&
               !!prev.timestamp &&
               !!r.timestamp &&
-              prev.author === r.author &&
+              prev.author_id === r.author_id &&
               within(prev.timestamp, r.timestamp, COMPACT_WINDOW_MS)
             return (
               <MessageRow

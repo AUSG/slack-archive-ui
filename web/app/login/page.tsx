@@ -11,6 +11,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   wrong_workspace:
     'AUSG (au-sg.slack.com) 외 다른 워크스페이스로 로그인하셨습니다. AUSG 계정으로 다시 시도해주세요.',
   access_denied: 'Slack 동의가 취소되었습니다.',
+  not_member:
+    'AUSG 워크스페이스 멤버 목록에 없는 계정입니다. 오늘 가입했다면 내일 다시 시도해주세요 (멤버 목록은 하루 한 번 동기화됩니다).',
 }
 
 export default function LoginPage() {

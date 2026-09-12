@@ -1,19 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
 import { HomeHero } from '@/components/workspace/HomeHero'
-import {
-  HIDDEN_NAME_LIKE,
-  HIDDEN_NAME_REGEX,
-} from '@/lib/data/channel-filter'
+import { getChannels } from '@/lib/api/archive'
+import { toChannel } from '@/lib/data/adapt'
 
 export default async function AppHomePage() {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('channel')
-    .select('id, name, msg_count')
-    .not('name', 'ilike', HIDDEN_NAME_LIKE)
-    .not('name', 'imatch', HIDDEN_NAME_REGEX)
-    .order('msg_count', { ascending: false, nullsFirst: false })
-    .limit(5)
-
-  return <HomeHero topChannels={data ?? []} />
+  const channels = await getChannels()
+  const top = [...channels]
+    .sort((a, b) => b.message_count - a.message_count)
+    .slice(0, 5)
+    .map(toChannel)
+  return <HomeHero topChannels={top} />
 }

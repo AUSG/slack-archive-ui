@@ -5,7 +5,25 @@
 배포 타겟: Vercel
 프레임워크: Next.js App Router + Tailwind + shadcn/ui
 인증: Supabase Auth + Slack OIDC (단일 워크스페이스)
-검색: pgroonga (한국어 형태소)
+검색: pg_trgm (GIN trgm 부분일치)
+
+---
+
+## 2026-09 변경: 데이터 원천이 Supabase 에서 아카이브 백엔드 API 로
+
+아래 본문은 2026-05 설계다. 2026-09-12 부터 UI 는 **Supabase 테이블을 직접 읽지 않는다.** 채널·타임라인·스레드·사용자·검색을
+slack-crawler 백엔드의 `/api/v1` (`GET /channels`, `/channels/{id}/messages`, `/channels/{id}/threads/{ts}`, `/users`,
+`/search`) 로 읽고, 요청마다 Supabase 세션의 access token 을 `Authorization: Bearer` 로 붙인다. 백엔드가 그 토큰의
+Slack user id 로 채널 권한(public 전부 + 내가 멤버인 private, 게스트는 멤버 채널만)을 건다 — 이름 규칙(`management`/`tf`)
+UI 필터는 사라졌다. Supabase 는 **Auth 와 `access_logs`** 만 남는다.
+
+- 코드: `web/lib/api/{client,archive,types}.ts` (호출), `web/lib/data/adapt.ts` (백엔드 응답 → UI 형태), `web/lib/data/types.ts`.
+- 브라우저는 백엔드를 직접 부르지 않는다. "더 보기"(`/api/archive/messages`)와 ⌘K(`/api/quick-search`)는 같은 오리진의
+  라우트 핸들러가 중계한다. 백엔드 URL·CORS 를 공개할 필요가 없다.
+- 새 환경변수 **`ARCHIVE_API_URL`** (서버 전용, 예: `https://api.example`). 없으면 모든 페이지가 503 으로 실패한다.
+- 식별자는 Slack id 다. 메시지에는 이름이 없고 `GET /users` (전원) 로 이름·아바타 맵을 만들어 서버에서 채운다.
+  `reply_authors` 도 `reply_user_ids` 에서 같은 방식으로.
+- 백엔드 쪽 설명: slack-crawler `docs/redesign/decisions.md` D9·D10·D18, `infra/README.md` "서빙 API".
 
 ---
 
@@ -165,16 +183,21 @@ create index document_author       on public.document (author);
 
 생성 컬럼은 적재 스크립트 무관하게 자동 채워지므로 기존 운영에 영향 없음.
 
-### 3-3. pgroonga 검색
+### 3-3. pg_trgm 검색
+
+> 2026-06-19: pgroonga(`content &@~ q`)에서 pg_trgm 부분일치로 전환.
+> 동기는 pgroonga(Groonga 엔진 + MeCab 사전 + 역색인)의 용량/의존성.
+> 트레이드오프: 형태소 분석 없음(부분일치만), 2글자 이하 질의는 인덱스 미사용(seq scan).
+> GiST trgm은 긴 메시지에서 리프 크기 한도(8KB) 초과로 불가 → **GIN** 사용.
 
 ```sql
-create extension if not exists pgroonga;
+create extension if not exists pg_trgm with schema extensions;
 
-create index document_content_pgroonga on public.document
-  using pgroonga (content)
-  with (tokenizer='TokenMecab');
+-- content 부분일치(ILIKE) 가속용 GIN trgm 인덱스 (실측 ~19MB)
+create index document_content_trgm on public.document
+  using gin (content extensions.gin_trgm_ops);
 
--- 검색 RPC
+-- 검색 RPC: 공백 토큰을 모두 포함(AND)하는 ILIKE 부분일치
 create or replace function public.search_messages(
   q text,
   ch text default null,
@@ -183,17 +206,40 @@ create or replace function public.search_messages(
   date_to timestamp default null,
   page_size int default 30,
   page_offset int default 0
-) returns setof public.document
-language sql stable security invoker
+)
+returns setof public.document
+language plpgsql stable security invoker
+set search_path = public, extensions, pg_temp
 as $$
-  select d.* from public.document d
-  where d.content &@~ q
-    and (ch is null or d.location = ch)
-    and (author_name is null or d.author = author_name)
-    and (date_from is null or d."timestamp" >= date_from)
-    and (date_to   is null or d."timestamp" <= date_to)
-  order by d."timestamp" desc
-  limit page_size offset page_offset;
+declare
+  toks text[];
+  tok  text;
+  conds text := '';
+  sql  text;
+begin
+  toks := regexp_split_to_array(btrim(coalesce(q, '')), '\s+');
+  foreach tok in array toks loop
+    if tok is not null and tok <> '' then
+      -- LIKE 특수문자(\ % _) 이스케이프 후 리터럴화
+      conds := conds || ' and d.content ilike '
+        || quote_literal('%' ||
+             replace(replace(replace(tok, '\', '\\'), '%', '\%'), '_', '\_')
+           || '%');
+    end if;
+  end loop;
+
+  sql := 'select d.* from public.document d where true'
+      || conds
+      || ' and ($1 is null or d.location = $1)'
+      || ' and ($2 is null or d.author = $2)'
+      || ' and ($3 is null or d."timestamp" >= $3)'
+      || ' and ($4 is null or d."timestamp" <= $4)'
+      || ' order by d."timestamp" desc'
+      || ' limit $5 offset $6';
+
+  return query execute sql
+    using ch, author_name, date_from, date_to, page_size, page_offset;
+end;
 $$;
 ```
 
@@ -252,7 +298,7 @@ app/
 │   │       ├─ page.tsx               # 채널 타임라인 (서버 컴포넌트, 무한 스크롤)
 │   │       └─ t/[ts]/page.tsx        # 스레드 패널
 │   └─ search/
-│       └─ page.tsx                   # pgroonga 검색
+│       └─ page.tsx                   # pg_trgm 검색
 └─ api/                               # 최소화. 대부분 RSC + supabase.rpc로 처리
 middleware.ts                          # 비로그인 차단
 
@@ -288,7 +334,7 @@ components/
 | **1** | 마이그레이션: channel, slack_user, document 생성 컬럼·인덱스 | ✅ 완료 | 없음 |
 | **2-a** | 채널 fill (79개 채널 등록) | ✅ 완료 | 없음 |
 | **2-b** | Slack 유저 매핑 fill (users.list) | ⏸ 보류 (v1에 필수 아님 — 멘션 렌더링과 "내 글" 기능에만 필요) | 없음 |
-| **3** | pgroonga 설치 + 인덱스 + search_messages RPC | ✅ 완료 | 없음 |
+| **3** | pg_trgm GIN 인덱스 + search_messages RPC (pgroonga에서 전환) | ✅ 완료 | 없음 |
 | **4** | Next.js 부트스트랩 + 인증 라우트 + proxy | ✅ 완료 (E2E 검증됨) | 없음 |
 | **5** | 사이드바 + 채널 타임라인 + 스레드 (읽기 전용 UI) | 다음 차례 | 없음 |
 | **6** | 검색 페이지 + Slack 마크업 렌더링 디테일 | | 없음 |
@@ -355,7 +401,7 @@ Slack `conversations.members` API로 채널별 실제 멤버 매핑(`channel_mem
 | 라우터 | App Router | Pages Router |
 | 워크스페이스 강제 | authorize URL `team` 파라미터 + 콜백 검증 | 콜백만 / 이메일 도메인 |
 | 권한 정책 | 로그인 = 전체 공개 채널 열람 | 멤버십 기반 / DM 포함 |
-| 검색 | pgroonga (TokenMecab) | Postgres FTS, pgvector |
+| 검색 | pg_trgm (GIN trgm 부분일치) | pgroonga, Postgres FTS, pgvector |
 | 유저 매핑 | users.list → slack_user 테이블 | 무시 / 재크롤링 |
 | UI | Tailwind + shadcn/ui | Tailwind 단독, Stream chat |
 | 배포 | Vercel | 로컬, Supabase Edge |

@@ -1,6 +1,9 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import { getUserMap } from '@/lib/data/users'
+import { getChannels, searchMessages } from '@/lib/api/archive'
+import { ApiError } from '@/lib/api/client'
+import { toChannel, toMsg } from '@/lib/data/adapt'
+import { getUserMap, resolveUserIdByName } from '@/lib/data/users'
+import type { Msg } from '@/lib/data/types'
 import { SearchFilters } from '@/components/search/SearchFilters'
 import { SearchResultGroup } from '@/components/search/SearchResultGroup'
 import { ThreadPanel } from '@/components/thread/ThreadPanel'
@@ -9,25 +12,8 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from '@/components/ui/resizable'
-import {
-  HIDDEN_NAME_LIKE,
-  HIDDEN_NAME_REGEX,
-} from '@/lib/data/channel-filter'
 
-type SearchRow = {
-  id: number
-  author: string | null
-  author_image_url: string | null
-  timestamp: string | null
-  content: string | null
-  message_ts: string | null
-  channel_id: string | null
-  parent_id: number | null
-  reply_count: number | null
-  last_reply_at: string | null
-  reply_authors: Array<{ name: string; avatar: string | null }> | null
-  thread_ts?: string | null
-}
+type SearchRow = Msg
 
 const PAGE_SIZE = 50
 
@@ -46,71 +32,40 @@ export default async function SearchPage({
   }>
 }) {
   const sp = await searchParams
-  const supabase = await createClient()
 
-  const [{ data: channels }, userMap] = await Promise.all([
-    supabase
-      .from('channel')
-      .select('id, name')
-      .not('name', 'ilike', HIDDEN_NAME_LIKE)
-      .not('name', 'imatch', HIDDEN_NAME_REGEX)
-      .order('name'),
-    getUserMap(),
-  ])
-
-  const channelMap = new Map((channels ?? []).map((c) => [c.id, c.name]))
+  // 채널 목록은 권한이 걸린 것만 온다. 검색도 백엔드가 같은 집합으로 거르므로 여기서 다시 거를 필요가 없다
+  const [apiChannels, userMap] = await Promise.all([getChannels(), getUserMap()])
+  const channels = apiChannels.map(toChannel)
+  const channelMap = new Map(channels.map((c) => [c.id, c.name]))
 
   const trimmed = sp.q?.trim() ?? ''
   let results: SearchRow[] = []
   let errorMsg: string | null = null
 
   if (trimmed) {
-    const { data, error } = await supabase.rpc('search_messages', {
-      q: trimmed,
-      ch: sp.ch || null,
-      author_name: sp.author?.trim() || null,
-      date_from: sp.from || null,
-      date_to: sp.to || null,
-      page_size: PAGE_SIZE,
-      page_offset: 0,
-    })
-    if (error) {
-      errorMsg = error.message
+    // 작성자 필터는 UI 가 이름을 받고 백엔드는 id 를 받는다. 이름을 모르면 결과 없음 (검색을 풀어 버리지 않는다)
+    const authorName = sp.author?.trim() || ''
+    const userId = authorName ? resolveUserIdByName(userMap, authorName) : null
+    if (authorName && !userId) {
+      results = []
     } else {
-      results = ((data ?? []) as SearchRow[]).filter(
-        (r) => r.channel_id !== null && channelMap.has(r.channel_id),
-      )
-      if (sp.hasThread === '1') {
-        results = results.filter(
-          (r) => r.parent_id === null && (r.reply_count ?? 0) > 0,
-        )
-      }
-      const parentIds = Array.from(
-        new Set(
-          results
-            .map((r) => r.parent_id)
-            .filter((id): id is number => id !== null),
-        ),
-      )
-      const parentTsById = new Map<number, string>()
-      if (parentIds.length > 0) {
-        const { data: parents } = await supabase
-          .from('document')
-          .select('id, message_ts')
-          .in('id', parentIds)
-        for (const p of parents ?? []) {
-          if (p.id != null && p.message_ts != null) {
-            parentTsById.set(p.id as number, p.message_ts as string)
-          }
+      try {
+        const res = await searchMessages({
+          q: trimmed,
+          channel: sp.ch || undefined,
+          user: userId ?? undefined,
+          from: sp.from || undefined,
+          to: sp.to || undefined,
+          limit: PAGE_SIZE,
+          offset: 0,
+        })
+        results = res.messages.map((m) => toMsg(m, userMap))
+        if (sp.hasThread === '1') {
+          results = results.filter((r) => !r.is_reply && (r.reply_count ?? 0) > 0)
         }
+      } catch (e) {
+        errorMsg = e instanceof ApiError ? `검색 실패 (${e.status})` : '검색 실패'
       }
-      results = results.map((r) => ({
-        ...r,
-        thread_ts:
-          r.parent_id !== null
-            ? parentTsById.get(r.parent_id) ?? r.message_ts
-            : r.message_ts,
-      })) as SearchRow[]
     }
   }
 
@@ -154,7 +109,7 @@ export default async function SearchPage({
           </div>
           <div className="mt-3">
             <SearchFilters
-              channels={channels ?? []}
+              channels={channels}
               initial={{
                 q: trimmed,
                 channelId: sp.ch ?? '',

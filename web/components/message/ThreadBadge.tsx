@@ -7,11 +7,10 @@ import { formatRelative } from '@/lib/utils/format'
 export function ThreadBadge({
   threadInfo,
   href,
-  userMap,
 }: {
   threadInfo: ThreadInfo
   href: string
-  userMap?: UserMap
+  userMap?: UserMap // 호출부 호환. 아바타는 이미 채워져 온다
 }) {
   return (
     <Link
@@ -20,8 +19,7 @@ export function ThreadBadge({
     >
       <div className="flex items-center gap-1">
         {threadInfo.authors.slice(0, 4).map((a, i) => {
-          const latest = userMap?.byName?.[a.name]
-          const av = latest?.avatarUrl ?? a.avatar
+          const av = a.avatar
           return (
             <Avatar key={`${a.name}-${i}`} className="h-5 w-5 rounded-sm">
               {av && <AvatarImage src={av} alt={a.name} />}

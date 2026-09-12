@@ -4,22 +4,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MessageRow } from '@/components/message/MessageRow'
 import type { UserMap } from '@/lib/data/users'
+import type { Msg } from '@/lib/data/types'
 import { toThreadInfo } from '@/lib/data/thread'
 
-type Row = {
-  id: number
-  author: string | null
-  author_image_url: string | null
-  timestamp: string | null
-  content: string | null
-  message_ts: string | null
-  channel_id: string | null
-  parent_id: number | null
-  reply_count: number | null
-  last_reply_at: string | null
-  reply_authors: Array<{ name: string; avatar: string | null }> | null
-  thread_ts?: string | null
-}
+type Row = Msg
 
 const INTERACTIVE_SELECTOR = 'a, button, input, textarea, select'
 
@@ -87,7 +75,7 @@ export function SearchResultGroup({
               data-clickable={threadHref ? 'true' : undefined}
               className="group/row overflow-hidden rounded-md border border-border-soft bg-surface transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-link data-[clickable=true]:cursor-pointer"
             >
-              {r.parent_id && (
+              {r.is_reply && (
                 <div className="border-b border-border-soft px-4 py-1 text-[11px] text-text-muted md:px-6">
                   스레드 답글
                 </div>
