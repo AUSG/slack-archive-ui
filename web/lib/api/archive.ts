@@ -3,6 +3,7 @@ import { cache } from 'react'
 import { apiGet, apiGetOrNull } from './client'
 import type {
   ApiChannel,
+  ApiMembers,
   ApiMessagesPage,
   ApiSearch,
   ApiThread,
@@ -30,6 +31,14 @@ export async function getThread(channelId: string, threadTs: string): Promise<Ap
   return apiGetOrNull<ApiThread>(
     `/channels/${encodeURIComponent(channelId)}/threads/${encodeURIComponent(threadTs)}`,
   )
+}
+
+/**
+ * 채널 참여자. private 채널은 **현재 멤버만** 이 목록을 받는다 (백엔드가 비멤버에게 404).
+ * 멤버십은 구간이라 여기 오는 것은 "지금 들어와 있는 사람" 이다.
+ */
+export async function getChannelMembers(channelId: string): Promise<ApiMembers | null> {
+  return apiGetOrNull<ApiMembers>(`/channels/${encodeURIComponent(channelId)}/members`)
 }
 
 /** 워크스페이스 전원 (탈퇴 제외, 봇 포함). 200명 규모. */

@@ -3,7 +3,7 @@ import { ChannelSidebar } from '@/components/channel/ChannelSidebar'
 import { UnifiedSearchPanel } from '@/components/workspace/UnifiedSearchPanel'
 import { MobileNav } from './MobileNav'
 
-type Channel = { id: string; name: string; msg_count: number | null }
+import type { Channel } from '@/lib/data/types'
 type PanelUser = { displayName: string; avatarUrl: string | null }
 
 export function AppShell({
