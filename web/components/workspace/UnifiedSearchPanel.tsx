@@ -18,11 +18,12 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
+import { ChannelIcon } from '@/components/channel/ChannelIcon'
 import { compactCount } from '@/lib/utils/format'
 import { useMessageQuickSearch } from '@/lib/hooks/useMessageQuickSearch'
 import { SEARCH_OPEN_EVENT } from '@/lib/utils/dispatch-search'
 
-type Channel = { id: string; name: string; msg_count: number | null }
+import type { Channel } from '@/lib/data/types'
 type PanelUser = { displayName: string; avatarUrl: string | null }
 
 export function UnifiedSearchPanel({
@@ -147,7 +148,7 @@ export function UnifiedSearchPanel({
                       value={`exact-${exactChannel.id}`}
                       onSelect={() => goChannel(exactChannel.id)}
                     >
-                      <span className="text-text-muted">#</span>
+                      <ChannelIcon isPrivate={exactChannel.is_private} className="text-text-muted" />
                       <span>{exactChannel.name}</span>
                       <span className="ml-auto text-xs text-text-muted">Enter</span>
                     </CommandItem>
@@ -181,7 +182,7 @@ export function UnifiedSearchPanel({
                         value={`ch-${c.id}`}
                         onSelect={() => goChannel(c.id)}
                       >
-                        <span className="text-text-muted">#</span>
+                        <ChannelIcon isPrivate={c.is_private} className="text-text-muted" />
                         <span>{c.name}</span>
                         <span className="ml-auto text-xs text-text-muted tabular-nums">
                           {compactCount(c.msg_count ?? 0)}

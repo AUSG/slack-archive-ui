@@ -1,6 +1,7 @@
 'use client'
 
 import Link, { useLinkStatus } from 'next/link'
+import { ChannelIcon } from './ChannelIcon'
 import { compactCount } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 
@@ -9,11 +10,13 @@ export function ChannelListItem({
   name,
   count,
   active,
+  isPrivate,
 }: {
   id: string
   name: string
   count: number | null
   active: boolean
+  isPrivate?: boolean
 }) {
   return (
     <Link
@@ -31,7 +34,7 @@ export function ChannelListItem({
           className="absolute left-0 top-0 h-full w-[3px] rounded-r bg-[color:var(--sidebar-active-bar)]"
         />
       )}
-      <ItemInner name={name} active={active} count={count} />
+      <ItemInner name={name} active={active} count={count} isPrivate={isPrivate} />
     </Link>
   )
 }
@@ -40,10 +43,12 @@ function ItemInner({
   name,
   active,
   count,
+  isPrivate,
 }: {
   name: string
   active: boolean
   count: number | null
+  isPrivate?: boolean
 }) {
   const { pending } = useLinkStatus()
   return (
@@ -54,7 +59,7 @@ function ItemInner({
           active ? 'text-white/85' : 'text-sidebar-fg-muted group-hover:text-sidebar-fg',
         )}
       >
-        {pending ? <Spin /> : '#'}
+        {pending ? <Spin /> : <ChannelIcon isPrivate={isPrivate} />}
       </span>
       <span className="truncate">{name}</span>
       <span

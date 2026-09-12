@@ -6,7 +6,7 @@ import { ChannelListItem } from './ChannelListItem'
 import { GlobalSearchInput } from '@/components/workspace/GlobalSearchInput'
 import { useState } from 'react'
 
-type Channel = { id: string; name: string; msg_count: number | null }
+import type { Channel } from '@/lib/data/types'
 
 export function ChannelSidebar({ channels }: { channels: Channel[] }) {
   const pathname = usePathname()
@@ -42,6 +42,7 @@ export function ChannelSidebar({ channels }: { channels: Channel[] }) {
                   name={ch.name}
                   count={ch.msg_count}
                   active={pathname === `/c/${ch.id}`}
+                  isPrivate={ch.is_private}
                 />
               </li>
             ))}

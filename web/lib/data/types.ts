@@ -31,3 +31,11 @@ export type MsgFile = {
 }
 
 export type Channel = { id: string; name: string; msg_count: number | null; is_private?: boolean }
+
+export type Member = {
+  user_id: string
+  name: string           // 표시 이름. 모르면 id
+  avatar: string | null
+  is_bot: boolean
+  deleted: boolean
+}

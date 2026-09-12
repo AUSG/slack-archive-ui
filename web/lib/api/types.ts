@@ -57,4 +57,18 @@ export type ApiUser = {
   }
 }
 
+export type ApiMember = {
+  user_id: string
+  is_bot: boolean
+  deleted: boolean
+  profile: ApiUser['profile']
+  since: string | null
+}
+
+export type ApiMembers = {
+  channel_id: string
+  is_private: boolean
+  members: ApiMember[]
+}
+
 export type ApiSearch = { messages: ApiMessage[]; limit: number; offset: number }

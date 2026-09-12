@@ -10,6 +10,8 @@ import {
 import { getUserMap } from '@/lib/data/users'
 import { getChannel, getMessages } from '@/lib/api/archive'
 import { toMsg } from '@/lib/data/adapt'
+import { ChannelIcon } from '@/components/channel/ChannelIcon'
+import { ChannelMembersDialog } from '@/components/channel/ChannelMembersDialog'
 import { MobileSearchTrigger } from '@/components/workspace/MobileSearchTrigger'
 import { slackChannelUrl } from '@/lib/slack/deep-link'
 import { compactCount } from '@/lib/utils/format'
@@ -48,14 +50,20 @@ export default async function ChannelPage({
           <BackIcon />
         </Link>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[18px] font-extrabold text-text-strong">
-            <span className="mr-1 text-text-muted">#</span>
+          <h2 className="flex min-w-0 items-center gap-1.5 truncate text-[18px] font-extrabold text-text-strong">
+            {/* private 은 자물쇠. 그 채널의 대화와 참여자 목록은 현재 멤버에게만 보인다 */}
+            <ChannelIcon isPrivate={channel.is_private} className="text-text-muted" />
             {channel.name}
           </h2>
           <p className="mt-0.5 text-xs text-text-muted">
             총 {compactCount(channel.message_count) || '0'}개 메시지
           </p>
         </div>
+        <ChannelMembersDialog
+          channelId={channel.id}
+          channelName={channel.name ?? channel.id}
+          isPrivate={channel.is_private}
+        />
         <MobileSearchTrigger />
         <a
           href={slackChannelUrl(channel.id)}

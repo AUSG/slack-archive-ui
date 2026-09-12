@@ -1,8 +1,9 @@
 import Link from 'next/link'
+import { ChannelIcon } from '@/components/channel/ChannelIcon'
 import { GlobalSearchInput } from './GlobalSearchInput'
 import { compactCount } from '@/lib/utils/format'
 
-type Channel = { id: string; name: string; msg_count: number | null }
+import type { Channel } from '@/lib/data/types'
 
 const EXAMPLE_QUERIES = ['회의록', '논문', '세미나']
 
@@ -34,8 +35,9 @@ export function HomeHero({ topChannels }: { topChannels: Channel[] }) {
                     href={`/c/${c.id}`}
                     className="flex items-center justify-between rounded-md border border-border-soft px-3 py-2 text-sm transition-colors hover:bg-surface-hover"
                   >
-                    <span className="truncate text-text-strong">
-                      <span className="text-text-muted">#</span> {c.name}
+                    <span className="flex min-w-0 items-center gap-1.5 truncate text-text-strong">
+                      <ChannelIcon isPrivate={c.is_private} className="text-text-muted" />
+                      {c.name}
                     </span>
                     <span className="text-xs text-text-muted tabular-nums">
                       {compactCount(c.msg_count ?? 0)}
