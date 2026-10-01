@@ -10,8 +10,11 @@ import type {
   ApiUser,
 } from './types'
 
-/** 요청 한 번에 한 번만. 레이아웃·페이지·스레드 패널이 같은 렌더에서 각자 부른다. */
-export const getChannels = cache(async (): Promise<ApiChannel[]> => apiGet<ApiChannel[]>('/channels'))
+/** 요청 한 번에 한 번만. 레이아웃·페이지·스레드 패널이 같은 렌더에서 각자 부른다.
+ *  Slack 에서 아카이브된 채널도 받는다. 공개 채널은 전부 사이드바에 보인다 (권한은 백엔드가 건다). */
+export const getChannels = cache(async (): Promise<ApiChannel[]> =>
+  apiGet<ApiChannel[]>('/channels', { include_archived: 'true' }),
+)
 
 export const getChannel = cache(async (id: string): Promise<ApiChannel | null> =>
   apiGetOrNull<ApiChannel>(`/channels/${encodeURIComponent(id)}`),
