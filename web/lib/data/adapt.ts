@@ -9,7 +9,13 @@ function tsToIso(ts: string | null): string | null {
 }
 
 export function toChannel(c: ApiChannel): Channel {
-  return { id: c.id, name: c.name ?? c.id, msg_count: c.message_count, is_private: c.is_private }
+  return {
+    id: c.id,
+    name: c.name ?? c.id,
+    msg_count: c.message_count,
+    is_private: c.is_private,
+    is_archived: c.is_archived,
+  }
 }
 
 export function toMsg(m: ApiMessage, userMap: UserMap): Msg {

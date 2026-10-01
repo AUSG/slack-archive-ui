@@ -11,6 +11,9 @@ import type { Channel } from '@/lib/data/types'
 export function ChannelSidebar({ channels }: { channels: Channel[] }) {
   const pathname = usePathname()
   const [openChannels, setOpenChannels] = useState(true)
+  const [openArchived, setOpenArchived] = useState(false)
+  const active = channels.filter((ch) => !ch.is_archived)
+  const archived = channels.filter((ch) => ch.is_archived)
 
   return (
     <nav
@@ -27,28 +30,58 @@ export function ChannelSidebar({ channels }: { channels: Channel[] }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
-        <ChannelSectionHeader
+        <ChannelSection
           label="Channels"
+          channels={active}
           open={openChannels}
           onToggle={() => setOpenChannels((v) => !v)}
-          count={channels.length}
+          pathname={pathname}
         />
-        {openChannels && (
-          <ul className="space-y-px">
-            {channels.map((ch) => (
-              <li key={ch.id}>
-                <ChannelListItem
-                  id={ch.id}
-                  name={ch.name}
-                  count={ch.msg_count}
-                  active={pathname === `/c/${ch.id}`}
-                  isPrivate={ch.is_private}
-                />
-              </li>
-            ))}
-          </ul>
+        {archived.length > 0 && (
+          <ChannelSection
+            label="Archived"
+            channels={archived}
+            open={openArchived}
+            onToggle={() => setOpenArchived((v) => !v)}
+            pathname={pathname}
+          />
         )}
       </div>
     </nav>
+  )
+}
+
+function ChannelSection({
+  label,
+  channels,
+  open,
+  onToggle,
+  pathname,
+}: {
+  label: string
+  channels: Channel[]
+  open: boolean
+  onToggle: () => void
+  pathname: string
+}) {
+  return (
+    <>
+      <ChannelSectionHeader label={label} open={open} onToggle={onToggle} count={channels.length} />
+      {open && (
+        <ul className="space-y-px">
+          {channels.map((ch) => (
+            <li key={ch.id}>
+              <ChannelListItem
+                id={ch.id}
+                name={ch.name}
+                count={ch.msg_count}
+                active={pathname === `/c/${ch.id}`}
+                isPrivate={ch.is_private}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }

@@ -30,7 +30,13 @@ export type MsgFile = {
   url: string
 }
 
-export type Channel = { id: string; name: string; msg_count: number | null; is_private?: boolean }
+export type Channel = {
+  id: string
+  name: string
+  msg_count: number | null
+  is_private?: boolean
+  is_archived?: boolean
+}
 
 export type Member = {
   user_id: string

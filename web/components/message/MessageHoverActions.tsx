@@ -25,7 +25,8 @@ export function MessageHoverActions({
   if (!channelId || !messageTs) return null
 
   const copyLink = async () => {
-    const url = `${window.location.origin}/c/${channelId}#msg-${messageTs}`
+    // 스레드가 있으면 ?t= 를 붙여 링크만으로 스레드 패널이 열리게 한다. 해시는 서버로 오지 않아 패널을 못 연다
+    const url = `${window.location.origin}${threadHref ?? `/c/${channelId}`}#msg-${messageTs}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
